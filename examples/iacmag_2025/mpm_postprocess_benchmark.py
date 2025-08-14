@@ -7,16 +7,12 @@ presented in the conference paper.
 
 import os
 
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 
-import matplotlib.pyplot as plt
-
-import matplotlib as mpl
-from matplotlib.lines import Line2D
-
 # Using scienceplots for better styles
-import scienceplots
-import os
+from matplotlib.lines import Line2D
 
 # define input and output directories
 dir_path = os.path.dirname(os.path.realpath(__file__))

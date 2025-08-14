@@ -17,14 +17,13 @@ from functools import partial
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-from typing_extensions import Callable, Optional, Self, Tuple
+from typing_extensions import Optional, Self, Tuple
 
 from ..common.types import TypeFloat, TypeInt
 from ..constitutive_laws.constitutive_law import ConstitutiveLaw
 from ..forces.force import Force
 from ..grid.grid import Grid
 from ..material_points.material_points import MaterialPoints
-
 from .mpm_solver import MPMSolver
 
 

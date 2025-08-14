@@ -8,27 +8,22 @@
 """Module for imposing zero/non-zero boundaries via rigid particles."""
 
 from functools import partial
-from typing import Callable, Tuple, Optional, Self, Any
-
-import jax
-import jax.numpy as jnp
-from jax import Array
-
-from ..grid.grid import Grid
-from ..material_points.material_points import MaterialPoints
-from .force import Force
+from typing import Any, Callable, Optional, Self
 
 import equinox as eqx
+import jax
+import jax.numpy as jnp
 
-from ..common.types import (
+from ..common.types import (  # TypeUIntScalarAStack,
     TypeFloat,
-    TypeInt,
-    # TypeUIntScalarAStack,
-    TypeFloatVectorAStack,
     TypeFloatVector,
+    TypeFloatVectorAStack,
+    TypeInt,
 )
-
+from ..grid.grid import Grid
+from ..material_points.material_points import MaterialPoints
 from ..shapefunctions.mapping import ShapeFunctionMapping
+from .force import Force
 
 
 class RigidParticles(Force):

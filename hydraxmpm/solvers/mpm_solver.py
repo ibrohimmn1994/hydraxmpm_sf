@@ -5,42 +5,23 @@
 
 # -*- coding: utf-8 -*-
 
-from typing import Callable, Optional, Self, Tuple, Dict
+import os
+import shutil
+from typing import Callable, Dict, Optional, Self, Tuple
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 
 from ..common.base import Base
-from ..common.types import (
-    TypeFloatScalarAStack,
-    TypeFloatVector3AStack,
-    TypeFloatVectorAStack,
-    TypeInt,
-    TypeUInt,
-    TypeUIntScalarAStack,
-    TypeFloat,
-)
-
-from ..shapefunctions.mapping import ShapeFunctionMapping
+from ..common.types import TypeFloat, TypeInt
 from ..constitutive_laws.constitutive_law import ConstitutiveLaw
-from ..forces.force import Force
-from ..grid.grid import Grid
 from ..forces.boundary import Boundary
+from ..forces.force import Force
 from ..forces.slipstickboundary import SlipStickBoundary
+from ..grid.grid import Grid
 from ..material_points.material_points import MaterialPoints
-
-from ..utils.math_helpers import (
-    get_hencky_strain_stack,
-    get_inertial_number_stack,
-    get_pressure_stack,
-    get_q_vm_stack,
-    get_scalar_shear_strain_stack,
-    get_strain_rate_from_L_stack,
-)
-
-import os
-import shutil
+from ..shapefunctions.mapping import ShapeFunctionMapping
 
 
 def _numpy_tuple_deep(x) -> tuple:
@@ -134,9 +115,7 @@ class MPMSolver(Base):
         self.constitutive_laws = (
             constitutive_laws
             if isinstance(constitutive_laws, tuple)
-            else (constitutive_laws,)
-            if constitutive_laws
-            else ()
+            else (constitutive_laws,) if constitutive_laws else ()
         )
 
         self.shape_map = ShapeFunctionMapping(

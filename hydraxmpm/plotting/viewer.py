@@ -5,19 +5,16 @@
 
 # -*- coding: utf-8 -*-
 
-import os
-
-from hydraxmpm.material_points import material_points
 import itertools
 
 from ..utils.mpm_callback_helpers import get_files
 
 
 def view(output_dir, scalars=None, vminmaxs=None, refresh_rate=0.05):
-    import polyscope as ps
-    import numpy as np
     import time
-    from pathlib import Path
+
+    import numpy as np
+    import polyscope as ps
 
     material_points_files = get_files(output_dir, "material_points")
 

@@ -24,11 +24,7 @@ def make_plot(
     return_start_end_markers=False,
     **kwargs,
 ):
-    import matplotlib.pyplot as plt
-
     from matplotlib.ticker import ScalarFormatter
-
-    from matplotlib import ticker
 
     out = ax.plot(x, y, label=label, **kwargs)
     (line,) = out

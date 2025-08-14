@@ -3,13 +3,12 @@
 import jax
 import jax.numpy as jnp
 
-
 print(jax.devices("gpu"))
 jax.config.update("jax_default_device", jax.devices("gpu")[0])
 
-import hydraxmpm as hdx
-
 import os
+
+import hydraxmpm as hdx
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -69,17 +68,17 @@ models = (
         rho_p=rho_0,
         other=dict(project="mcc"),
     ),
-    hdx.MuI_incompressible(
-        mu_s=mu,
-        mu_d=2.9,
-        I_0=0.279,
-        K=K,
-        d=0.00125,
-        rho_p=rho_0,
-        rho_0=rho_0,
-        other=dict(project="mu_i"),
-    ),
-    # fluid becomes unstable
+    # hdx.MuI_incompressible(
+    #     mu_s=mu,
+    #     mu_d=2.9,
+    #     I_0=0.279,
+    #     K=K,
+    #     d=0.00125,
+    #     rho_p=rho_0,
+    #     rho_0=rho_0,
+    #     other=dict(project="mu_i"),
+    # ),
+    # # fluid becomes unstable
     # so we damp numericallly
     # and increase time step
     hdx.NewtonFluid(
@@ -91,8 +90,8 @@ models = (
     ),
 )
 
-
-solver = hdx.USL_ASFLIP(
+# it was AS_FLIP
+solver = hdx.USL_APIC(
     alpha=models[model_index].other.get("alpha", 0.95),
     shapefunction="cubic",
     dim=2,

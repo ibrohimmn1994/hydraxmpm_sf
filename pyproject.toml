@@ -13,8 +13,9 @@ dependencies = [
     "jaxtyping>=0.2.37",
     "typeguard==2.13.3",
     "polyscope>=2.3.0",
-    "jax~=0.5.3"
-
+    "jax~=0.5.3",
+    "pyright>=1.1.403",
+    "ruff>=0.12.8",
 ]
 authors = [
   {name = "Retief Lubbe", email = "r.lubbe@utwente.nl"},

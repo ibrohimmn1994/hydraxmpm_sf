@@ -7,17 +7,12 @@ presented in the conference paper.
 
 import os
 
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 
-import matplotlib.pyplot as plt
-
-import matplotlib as mpl
-from matplotlib.lines import Line2D
-
 # Using scienceplots for better styles
-import scienceplots
-import os
-from matplotlib import cm, patches, ticker
+from matplotlib import cm, ticker
 from matplotlib.ticker import FuncFormatter, LogFormatterSciNotation
 
 # define input and output directories
@@ -187,7 +182,7 @@ else:
 cbar.ax.set_ylabel(leg_label)
 
 
-fig.suptitle('Column Collapse (t=1.0 s)', fontsize=8)
+fig.suptitle("Column Collapse (t=1.0 s)", fontsize=8)
 plt.savefig(
     plot_dir + f"/mpm_plot_contour_{file_suffix}.png", transparent=is_tranparent
 )

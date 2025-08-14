@@ -5,7 +5,7 @@
 
 # -*- coding: utf-8 -*-
 
-from typing import Optional, Self, Tuple, Any
+from typing import Any, Optional, Self, Tuple
 
 from ..common.base import Base
 from ..common.types import TypeFloat, TypeInt
