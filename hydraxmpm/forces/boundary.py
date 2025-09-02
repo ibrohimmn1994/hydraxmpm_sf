@@ -8,36 +8,34 @@
 """Module for imposing zero/non-zero boundaries via rigid material_points."""
 
 from functools import partial
-from typing import Optional, Self, Any
+from typing import Any, Optional, Self, Tuple
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 
-from ..common.types import (
-    TypeFloat,
-    TypeInt,
-    TypeUIntScalarAStack,
-)
+from ..common.types import TypeFloat, TypeInt, TypeUIntScalarAStack
 from ..grid.grid import Grid
 from ..material_points.material_points import MaterialPoints
 from .force import Force
 
 
+###########################################################################################
 class Boundary(Force):
-    mu: TypeFloat
-    thickness: TypeInt = eqx.field(static=True)
-    dim: int = eqx.field(static=True)
+    mu: TypeFloat = eqx.field(init=False, static=True)
+    thickness: TypeInt = eqx.field(init=False, static=True)
+    dim: int = eqx.field(init=False, static=True)
     id_stack: Optional[TypeUIntScalarAStack] = None
 
     _padding: tuple = eqx.field(init=False, static=True, repr=False)
 
+    ######################################################################################
     def __init__(
         self,
-        mu: Optional[TypeFloat] = 0.0,
-        thickness: Optional[TypeInt] = 2,
+        mu: TypeFloat = 0.0,
+        thickness: TypeInt = 2,
         **kwargs,
-    ):
+    ) -> None:
         self.mu = mu
         self.thickness = thickness
 
@@ -45,42 +43,42 @@ class Boundary(Force):
         self.id_stack = kwargs.get("id_stack", None)
         self._padding = (0, 3 - self.dim)
 
+    ######################################################################################
     def init_ids(self: Self, grid: Grid, dim: int, **kwargs):
+
         all_id_stack = (
             jnp.arange(grid.num_cells).reshape(grid.grid_size).astype(jnp.uint32)
-        )
-
-        mask_stack = jnp.zeros_like(all_id_stack).astype(jnp.bool_)
-
-        type_stack = grid.type_stack.reshape(grid.grid_size).at[:].set(0)
+        )  # id array
+        mask_stack = jnp.zeros_like(all_id_stack).astype(jnp.bool_)  # False array
+        type_stack = grid.type_stack.reshape(grid.grid_size).at[:].set(0)  # o array
 
         if dim == 2:
             # boundary layers
             mask_stack = mask_stack.at[0 : self.thickness, :].set(True)  # x0
-
             mask_stack = mask_stack.at[:, 0 : self.thickness].set(True)  # y0
-
             mask_stack = mask_stack.at[grid.grid_size[0] - self.thickness :, :].set(
                 True
             )  # x1
-
             mask_stack = mask_stack.at[:, grid.grid_size[1] - self.thickness :].set(
                 True
             )  # y1
             # left boundary +h
-            type_stack = type_stack.at[self.thickness - 1, :].set(3)
-            type_stack = type_stack.at[:, self.thickness - 1].set(3)
+            type_stack = type_stack.at[self.thickness - 1, :].set(3)  # x0
+            type_stack = type_stack.at[:, self.thickness - 1].set(3)  # y0
             # right boundary -h
-            type_stack = type_stack.at[grid.grid_size[0] - self.thickness, :].set(4)
-            type_stack = type_stack.at[:, grid.grid_size[1] - self.thickness].set(4)
-
+            type_stack = type_stack.at[grid.grid_size[0] - self.thickness, :].set(
+                4
+            )  # x1
+            type_stack = type_stack.at[:, grid.grid_size[1] - self.thickness].set(
+                4
+            )  # y1
             # boundary
             type_stack = type_stack.at[self.thickness - 2, :].set(1)
             type_stack = type_stack.at[:, self.thickness - 2].set(1)
             type_stack = type_stack.at[grid.grid_size[0] - self.thickness + 1, :].set(1)
             type_stack = type_stack.at[:, grid.grid_size[1] - self.thickness + 1].set(1)
 
-            # # degenerate
+            # # degeneratr i.e the overlappign part
             # type_stack = type_stack.at[:, 0 : self.thickness - 1].set(0)
             # type_stack = type_stack.at[0 : self.thickness - 1, :].set(0)
             # type_stack = type_stack.at[grid.grid_size[0] - self.thickness + 1 :, :].set(
@@ -121,6 +119,7 @@ class Boundary(Force):
         )
         return new_self, new_grid
 
+    ######################################################################################
     def apply_on_grid(
         self: Self,
         material_points: Optional[MaterialPoints] = None,
@@ -129,12 +128,13 @@ class Boundary(Force):
         dt: Optional[TypeFloat] = 0.01,
         dim: TypeInt = 3,
         **kwargs: Any,
-    ):
+    ) -> Tuple[Grid, Self]:
+
+        # ------------------------------------------------------------------------------
         @partial(jax.vmap, in_axes=0, out_axes=0)
         def vmap_selected_grid(moment_nt, moment, mass, normal):
-            # normal = grid.normal_stack.at[n_id].get()
-            # scalar_norm = jnp.linalg.vector_norm(normal)
 
+            # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             def calculate_velocity(mom):
                 # check if the velocity direction of the normal and apply contact
                 # dot product is 0 when the vectors are orthogonal
@@ -143,67 +143,39 @@ class Boundary(Force):
                 # if parallel the contact is happening
 
                 # vel = mom / mass
-
                 vel = mom / (mass + 1e-12)
-
-                # vel = jax.lax.cond(
-                #     mass > grid.small_mass_cutoff,
-                #     lambda x: x / mass,
-                #     lambda x: jnp.zeros_like(x),
-                #     mom,
-                # )
                 norm = jnp.linalg.vector_norm(normal)
                 normal_hat = normal / (norm + 1e-12)
-                # normal_hat = jax.lax.cond(
-                #     mass > grid.small_mass_cutoff,
-                #     lambda x: x /(norm),
-                #     lambda x: jnp.zeros_like(x),
-                #     normal,
-                # )
-                # normal_hat = jnp.nan_to_num(normal_hat)
-
-                # normal_hat =normal/scalar_norm
-
                 norm_padded = jnp.pad(
                     normal_hat,
                     self._padding,
                     mode="constant",
                     constant_values=0,
                 )
-                # delta_vel = vel - levelset_vel
                 delta_vel = vel
-
                 delta_vel_padded = jnp.pad(
                     delta_vel,
                     self._padding,
                     mode="constant",
                     constant_values=0,
                 )
-
                 delta_vel_dot_normal = jnp.dot(delta_vel, normal_hat)
-
                 delta_vel_cross_normal = jnp.cross(
                     delta_vel_padded, norm_padded
                 )  # works only for vectors of len
-
                 norm_delta_vel_cross_normal = jnp.linalg.vector_norm(
                     delta_vel_cross_normal
                 )
-
                 omega = delta_vel_cross_normal / norm_delta_vel_cross_normal
-
                 mu_prime = jnp.minimum(
                     self.mu, norm_delta_vel_cross_normal / delta_vel_dot_normal
                 )
-
                 normal_cross_omega = jnp.cross(
                     norm_padded, omega
                 )  # works only for vectors of len 3
-
                 tangent = (
                     (norm_padded + mu_prime * normal_cross_omega).at[: self.dim].get()
                 )
-
                 # sometimes tangent become nan if velocity is zero at initialization
                 # which causes problems
                 tangent = jnp.nan_to_num(tangent)
@@ -218,6 +190,7 @@ class Boundary(Force):
                     vel,
                 )
 
+            # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             vel = calculate_velocity(moment)
             node_moment = vel * mass
 
@@ -226,6 +199,7 @@ class Boundary(Force):
 
             return node_moment, node_moment_nt
 
+        # -------------------------------------------------------------------------------
         levelset_moment_stack, levelset_moment_nt_stack = vmap_selected_grid(
             # self.id_stack,
             grid.moment_nt_stack.at[self.id_stack].get(),
@@ -233,6 +207,7 @@ class Boundary(Force):
             grid.mass_stack.at[self.id_stack].get(),
             grid.normal_stack.at[self.id_stack].get(),
         )
+
         new_moment_nt_stack = grid.moment_nt_stack.at[self.id_stack].set(
             levelset_moment_nt_stack
         )
@@ -243,3 +218,8 @@ class Boundary(Force):
             (new_moment_nt_stack),
         )
         return new_grid, self
+
+    ######################################################################################
+
+
+###########################################################################################

@@ -43,7 +43,8 @@ from .plotting import helpers, viewer
 #                            TriaxialConsolidatedUndrained,
 # )
 from .solvers.mpm_solver import MPMSolver
-from .solvers.sip_solver import SIPSolver
+
+# from .solvers.sip_solver import SIPSolver
 from .solvers.usl import USL
 from .solvers.usl_apic import USL_APIC
 

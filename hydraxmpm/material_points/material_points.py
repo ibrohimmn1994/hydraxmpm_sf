@@ -5,7 +5,6 @@
 
 # -*- coding: utf-8 -*-
 
-import warnings
 from typing import Optional, Self
 
 import equinox as eqx
@@ -30,8 +29,6 @@ from ..utils.math_helpers import (
     get_scalar_shear_strain_stack,
     get_strain_rate_from_L_stack,
     get_volumetric_strain_stack,
-    get_double_contraction_stack,
-    get_double_contraction,
 )
 
 
@@ -49,21 +46,24 @@ class MaterialPoints(Base):
         stress_stack: Cauchy stress tensors (shape: `(num_points, dim, dim)`).
         F_stack: Deformation gradient tensors (shape: `(num_points, dim, dim)`).
         rho_p: Particle density (assuming constant particle density for all particles).
-        rho_0: Reference pressure for particles (scalar or array of shape: `(num_points,)`).
-        rho_0: Reference density for particles (scalar or array of shape: `(num_points,)`).
+        rho_0: Reference pressure for particles (scalar or array of shape: `(num_points,
+        )`).
+        rho_0: Reference density for particles (scalar or array of shape: `(num_points,)
+        `).
     """
 
-    position_stack: TypeFloatVectorPStack
-    velocity_stack: TypeFloatVectorPStack
-    force_stack: TypeFloatVectorPStack
+    ####################################################################################
+    position_stack: TypeFloatVectorPStack = eqx.field(init=False)
+    velocity_stack: TypeFloatVectorPStack = eqx.field(init=False)
+    force_stack: TypeFloatVectorPStack = eqx.field(init=False)
 
-    mass_stack: TypeFloatScalarPStack
-    volume_stack: TypeFloatScalarPStack
-    volume0_stack: TypeFloatScalarPStack
+    mass_stack: TypeFloatScalarPStack = eqx.field(init=False)
+    volume_stack: TypeFloatScalarPStack = eqx.field(init=False)
+    volume0_stack: TypeFloatScalarPStack = eqx.field(init=False)
 
-    L_stack: TypeFloatMatrix3x3PStack
-    stress_stack: TypeFloatMatrix3x3PStack
-    F_stack: TypeFloatMatrix3x3PStack
+    L_stack: TypeFloatMatrix3x3PStack = eqx.field(init=False)
+    stress_stack: TypeFloatMatrix3x3PStack = eqx.field(init=False)
+    F_stack: TypeFloatMatrix3x3PStack = eqx.field(init=False)
 
     dim: TypeInt = eqx.field(init=False, static=True, default=3)
     num_points: TypeInt = eqx.field(init=False, static=True, default=1)
@@ -71,6 +71,7 @@ class MaterialPoints(Base):
     ref_gravity_pe_pos: Optional[TypeFloatVector] = None
     ref_gravity: Optional[TypeFloatVector] = None
 
+    ####################################################################################
     def __init__(
         self: Self,
         position_stack: Optional[TypeFloatVectorPStack] = None,
@@ -80,7 +81,7 @@ class MaterialPoints(Base):
         stress_stack: Optional[TypeFloatMatrix3x3PStack] = None,
         # Use kwargs for less common parameters
         **kwargs,
-    ) -> Self:
+    ) -> None:
         # Initialize required fields
 
         if position_stack is None:
@@ -105,6 +106,8 @@ class MaterialPoints(Base):
         self.mass_stack = (
             mass_stack if mass_stack is not None else jnp.ones(self.num_points)
         )
+
+        # For convenince to get the stress out of pressure directly sigma = -pI
         p_stack = kwargs.get("p_stack", None)
         if p_stack is not None:
             if eqx.is_array(p_stack):
@@ -130,6 +133,8 @@ class MaterialPoints(Base):
         self.ref_gravity = kwargs.get("ref_gravity")
         super().__init__(**kwargs)
 
+    ####################################################################################
+
     def init_stress_from_p_0(self: Self, p_0) -> Self:
         # initialize stress tensor from hydrostatic pressure
         # assumes no deviatoric stresses
@@ -142,11 +147,12 @@ class MaterialPoints(Base):
             )
 
         return eqx.tree_at(
-            lambda state: state.stress_stack,
+            lambda state: (state.stress_stack),
             self,
             (new_stress_stack),
         )
 
+    ####################################################################################
     def init_volume_from_cellsize(
         self, cell_size: TypeFloat, ppc: int, init_volume0=True
     ) -> Self:
@@ -165,6 +171,7 @@ class MaterialPoints(Base):
             (new_volume_stack, new_volume0_stack),
         )
 
+    ####################################################################################
     def init_mass_from_rho_0(self: Self, rho_0) -> Self:
         """
         Discretizes the particles into cells so densities are distributed evenly
@@ -173,6 +180,7 @@ class MaterialPoints(Base):
         new_mass_stack = rho_0 * self.volume_stack
         return eqx.tree_at(lambda state: (state.mass_stack), self, (new_mass_stack))
 
+    ####################################################################################
     def _refresh(self) -> Self:
         """Zero velocity gradient"""
         return eqx.tree_at(
@@ -181,6 +189,7 @@ class MaterialPoints(Base):
             (self.L_stack.at[:].set(0.0), self.force_stack.at[:].set(0.0)),
         )
 
+    ####################################################################################
     def update_L_and_F_stack(self, L_stack_next, dt):
         # TODO a better name for this function?
         def update_F_volume(L_next, F_prev, volume0):
@@ -196,58 +205,72 @@ class MaterialPoints(Base):
             L_stack=L_stack_next, F_stack=F_stack_next, volume_stack=volume_stack_next
         )
 
+    ####################################################################################
     @property
     def rho_stack(self):
         return self.mass_stack / self.volume_stack
 
+    ####################################################################################
     @property
     def rho0_stack(self):
         return self.mass_stack / self.volume0_stack
 
+    ####################################################################################
     @property
     def p_stack(self):
         return get_pressure_stack(self.stress_stack)
 
+    ####################################################################################
     @property
     def KE_density_stack(self):
         return get_KE_stack(self.rho_stack, self.velocity_stack)
 
+    ####################################################################################
     @property
     def KE_stack(self):
         return get_KE_stack(self.mass_stack, self.velocity_stack)
 
+    ####################################################################################
     @property
     def q_stack(self):
         return get_q_vm_stack(self.stress_stack)
 
+    ####################################################################################
     @property
     def q_p_stack(self):
         return self.q_stack / self.p_stack
 
+    ####################################################################################
     @property
     def eps_stack(self):
         return get_hencky_strain_stack(self.F_stack)[0]
 
+    ####################################################################################
     @property
     def eps_v_stack(self):
         return get_volumetric_strain_stack(self.eps_stack)
 
+    ####################################################################################
     @property
     def deps_dt_stack(self):
         return get_strain_rate_from_L_stack(self.L_stack)
 
+    ####################################################################################
     @property
     def gamma_stack(self):
         return get_scalar_shear_strain_stack(self.eps_stack)
 
+    ####################################################################################
     @property
     def dgamma_dt_stack(self):
         return get_scalar_shear_strain_stack(self.deps_dt_stack)
 
+    ####################################################################################
     @property
     def viscosity_stack(self):
         return (jnp.sqrt(3) * self.q_stack) / self.dgamma_dt_stack
 
+    ####################################################################################
     # def work_ext_stack(self, dt, **kwargs):
     #     # external work  (e.g., potential energy due to gravity)
     #     def vmap_W_ext(force, vel):
@@ -257,9 +280,11 @@ class MaterialPoints(Base):
 
     #     return jax.vmap(vmap_W_ext)(self.force_stack, self.velocity_stack)
 
-    def PE_ext_stack(self, dt, **kwargs):
-        return self.work_ext_stack(dt)
+    ####################################################################################
+    # def PE_ext_stack(self, dt, **kwargs):
+    #     return self.work_ext_stack(dt)
 
+    ####################################################################################
     @property
     def PE_grav_stack(self):
         if self.ref_gravity is None:
@@ -274,24 +299,30 @@ class MaterialPoints(Base):
 
         return jax.vmap(vmap_grav_pe)(self.position_stack, self.mass_stack)
 
+    ####################################################################################
     def PE_stack(self, dt, W_stack, **kwargs):
-        assert W_stack is not None, (
-            "Please set approx_strain_energy_density=True for the material points"
-        )
+        assert (
+            W_stack is not None
+        ), "Please set approx_strain_energy_density=True for the material points"
         return W_stack * self.volume_stack + self.PE_grav_stack
 
+    ####################################################################################
     def KE_PE_Stack(self, dt, W_stack, **kwargs):
         return self.KE_stack / self.PE_stack(dt, W_stack)
 
+    ####################################################################################
     def deps_stack(self, dt, **kwargs):
         return self.deps_dt_stack * dt
 
+    ####################################################################################
     def phi_stack(self, rho_p, **kwargs):
         return self.rho_stack / rho_p
 
+    ####################################################################################
     def specific_volume_stack(self, rho_p, **kwargs):
         return 1.0 / self.phi_stack(rho_p)
 
+    ####################################################################################
     def inertial_number_stack(self, d, rho_p, **kwargs):
         return get_inertial_number_stack(
             self.p_stack,
@@ -300,27 +331,32 @@ class MaterialPoints(Base):
             rho_p,
         )
 
-    def deps_p_dt_stack(self, dt, eps_e_stack=None, eps_e_stack_prev=None, **kwargs):
+    ####################################################################################
+    def deps_p_dt_stack(self, dt, eps_p_stack=None, eps_p_stack_prev=None, **kwargs):
         """Plastic strain rate tensor"""
 
-        if eps_e_stack is None:
-            eps_e_stack = jnp.zeros((3, 3))
+        if eps_p_stack is None:
+            eps_p_stack = jnp.zeros((3, 3))
 
-        if eps_e_stack_prev is None:
-            eps_e_stack_prev = jnp.zeros((3, 3))
+        if eps_p_stack_prev is None:
+            eps_p_stack_prev = jnp.zeros((3, 3))
 
-        return (eps_e_stack - eps_e_stack_prev) * dt
+        return (eps_p_stack - eps_p_stack_prev) / dt
 
-    def dgamma_p_dt_stack(self, dt, eps_e_stack=None, eps_e_stack_prev=None, **kwargs):
+    ####################################################################################
+    def dgamma_p_dt_stack(self, dt, eps_p_stack=None, eps_p_stack_prev=None, **kwargs):
         """Plastic scalar shear strain rate"""
 
         return get_scalar_shear_strain_stack(
-            self.deps_p_dt_stack(dt, eps_e_stack, eps_e_stack_prev, **kwargs)
+            self.deps_p_dt_stack(dt, eps_p_stack, eps_p_stack_prev, **kwargs)
         )
 
-    def deps_p_v_dt_stack(self, dt, eps_e_stack, eps_e_stack_prev=None, **kwargs):
+    ####################################################################################
+    def deps_p_v_dt_stack(self, dt, eps_p_stack, eps_p_stack_prev=None, **kwargs):
         """Plastic scalar volumetric strain rate"""
 
         return get_volumetric_strain_stack(
-            self.deps_p_dt_stack(dt, eps_e_stack, eps_e_stack_prev, **kwargs)
+            self.deps_p_dt_stack(dt, eps_p_stack, eps_p_stack_prev, **kwargs)
         )
+
+    ####################################################################################

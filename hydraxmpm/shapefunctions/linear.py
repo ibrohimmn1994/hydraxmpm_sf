@@ -9,9 +9,10 @@ from typing import Tuple
 
 import jax.numpy as jnp
 
-from ..common.types import TypeInt, TypeFloat, TypeFloat3, TypeFloatVector
+from ..common.types import TypeFloat, TypeFloat3, TypeFloatVector, TypeInt
 
 
+##########################################################################################
 def vmap_linear_shapefunction(
     intr_dist: TypeFloatVector,
     inv_cell_size: TypeFloat,
@@ -53,3 +54,6 @@ def vmap_linear_shapefunction(
     )
 
     return (shapef, shapef_grad_padded)
+
+
+##########################################################################################

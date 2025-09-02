@@ -1,14 +1,18 @@
 """Granular column collapse"""
 
+import os
+
 import jax
 import jax.numpy as jnp
+
+import hydraxmpm as hdx
 
 print(jax.devices("gpu"))
 jax.config.update("jax_default_device", jax.devices("gpu")[0])
 
-import os
+# import os
 
-import hydraxmpm as hdx
+# import hydraxmpm as hdx
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -57,18 +61,18 @@ models = (
         rho_p=rho_0,
         other=dict(project="dp"),
     ),
-    hdx.ModifiedCamClay(
-        nu=0.3,
-        M=mu * jnp.sqrt(3),
-        lam=0.0058,
-        kap=0.0012,
-        R=1.0,
-        # p=1Pa reference limit
-        rho_0=rho_0,
-        rho_p=rho_0,
-        other=dict(project="mcc"),
-    ),
-    # hdx.MuI_incompressible(
+    # hdx.ModifiedCamClay(
+    #     nu=0.3,
+    #     M=mu * jnp.sqrt(3),
+    #     lam=0.0058,
+    #     kap=0.0012,
+    #     R=1.0,
+    #     # p=1Pa reference limit
+    #     rho_0=rho_0,
+    #     rho_p=rho_0,
+    #     other=dict(project="mcc"),
+    # ),
+    # # hdx.MuI_incompressible(
     #     mu_s=mu,
     #     mu_d=2.9,
     #     I_0=0.279,
@@ -81,13 +85,13 @@ models = (
     # # fluid becomes unstable
     # so we damp numericallly
     # and increase time step
-    hdx.NewtonFluid(
-        other=dict(project="fluid", alpha=0.9, dt_alpha=0.01),
-        K=K,
-        viscosity=0.002,
-        alpha=7.0,
-        rho_0=rho_0,
-    ),
+    #     hdx.NewtonFluid(
+    #         other=dict(project="fluid", alpha=0.9, dt_alpha=0.01),
+    #         K=K,
+    #         viscosity=0.002,
+    #         alpha=7.0,
+    #         rho_0=rho_0,
+    #     ),
 )
 
 # it was AS_FLIP

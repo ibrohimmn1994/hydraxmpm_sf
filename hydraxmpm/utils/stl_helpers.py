@@ -8,9 +8,10 @@
 import numpy as np
 
 
+########################################################################
 def sample_points_on_surface(mesh_path, distance=0.001, plot=False):
-    import vtk
     import pyvista as pv
+    import vtk
 
     reader = pv.get_reader(mesh_path)
 
@@ -31,6 +32,7 @@ def sample_points_on_surface(mesh_path, distance=0.001, plot=False):
     return np.array(point_cloud.points)
 
 
+########################################################################
 def get_stl_bounds(mesh_path):
     import vtk
 
@@ -41,6 +43,9 @@ def get_stl_bounds(mesh_path):
     bounds = reader.GetOutput().GetBounds()
 
     return np.array(bounds).reshape(3, 2).T
+
+
+########################################################################
 
 
 def sample_points_in_volume(
@@ -77,3 +82,6 @@ def sample_points_in_volume(
     if return_surface:
         return inside_points, surface
     return inside_points
+
+
+########################################################################

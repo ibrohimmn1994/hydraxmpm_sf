@@ -24,6 +24,8 @@ from ..grid.grid import Grid
 from ..material_points.material_points import MaterialPoints
 from .mpm_solver import MPMSolver
 
+###################################################################################
+
 
 class USL_APIC(MPMSolver):
     """
@@ -44,6 +46,7 @@ class USL_APIC(MPMSolver):
     Dp_inv: TypeFloatMatrix3x3
     Bp_stack: TypeFloatMatrix3x3PStack
 
+    ##############################################################################
     def __init__(
         self,
         *,
@@ -95,6 +98,7 @@ class USL_APIC(MPMSolver):
         else:
             self.Bp_stack = Bp_stack
 
+    ##############################################################################
     def update(self: Self, step: TypeInt = 0, dt: TypeFloat = 1e-3) -> Self:
         material_points = self.material_points._refresh()
 
@@ -133,6 +137,7 @@ class USL_APIC(MPMSolver):
             (material_points, grid, constitutive_laws, forces, new_shape_map),
         )
 
+    ##############################################################################
     def p2g(self, material_points, grid, dt):
         def vmap_intr_p2g(point_id, intr_shapef, intr_shapef_grad, intr_dist):
             intr_masses = material_points.mass_stack.at[point_id].get()
@@ -204,6 +209,7 @@ class USL_APIC(MPMSolver):
             (new_mass_stack, new_moment_stack, nodes_moment_nt_stack, new_normal_stack),
         )
 
+    ##############################################################################
     def g2p(self, material_points, grid, shape_map, dt) -> Tuple[Self, MaterialPoints]:
         def vmap_intr_g2p(intr_hashes, intr_shapef, intr_shapef_grad, intr_dist):
             intr_masses = grid.mass_stack.at[intr_hashes].get()
@@ -329,3 +335,8 @@ class USL_APIC(MPMSolver):
         )
 
         return (new_solver, new_particles)
+
+    ##############################################################################
+
+
+###################################################################################

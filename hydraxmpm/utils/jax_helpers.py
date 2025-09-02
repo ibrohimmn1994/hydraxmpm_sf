@@ -9,9 +9,9 @@ import operator
 from inspect import signature
 
 import jax
-import jax.numpy as jnp
 
 
+#####################################################################################
 def get_sv(func, val):
     return signature(func).parameters[val].default
 
@@ -26,6 +26,9 @@ def get_dirpath():
 
 def set_default_gpu(gpu_id=0):
     jax.config.update("jax_default_device", jax.devices("gpu")[gpu_id])
+
+
+#####################################################################################
 
 
 def dump_restart_files(
@@ -43,6 +46,7 @@ def dump_restart_files(
     if directory is None:
         directory = "/restart"
 
+    # note: make sure that the directory exist or let the function creat it auto
     def dump(object, name):
         with open(
             f"{config.dir_path}/restart/{config.project}/{name}-{suffix}.pickle", "wb"
@@ -67,6 +71,7 @@ def dump_restart_files(
         dump(forces_stack, "forces_stack")
 
 
+#####################################################################################
 def scan_kth(f, init, xs=None, reverse=False, unroll=1, store_every=1):
     """https://github.com/google/jax/discussions/12157"""
     store_every = operator.index(store_every)
@@ -89,3 +94,6 @@ def scan_kth(f, init, xs=None, reverse=False, unroll=1, store_every=1):
         return carry, [yss[-1] for yss in ys]
 
     return jax.lax.scan(f_outer, init, xs=xs, **kwds)
+
+
+#####################################################################################

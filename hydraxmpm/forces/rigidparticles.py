@@ -26,42 +26,37 @@ from ..shapefunctions.mapping import ShapeFunctionMapping
 from .force import Force
 
 
+###########################################################################################
 class RigidParticles(Force):
     """Shapes are discretized into rigid particles to impose boundary conditions.
-
-
     Correction to Bardenhagen's contact algorithm presented by
-
-    L. Gao, et. al, 2022, MPM modeling of pile installation in sand - Computers and geotechniques
-
-
+    L. Gao, et. al, 2022, MPM modeling of pile installation in sand - Computers and
+    geotechniques
     The rigid particles are used to impose boundary conditions on the grid.
-
     """
 
-    position_stack: TypeFloatVectorAStack
-    velocity_stack: TypeFloatVectorAStack
+    position_stack: TypeFloatVectorAStack = eqx.field(init=False)
+    velocity_stack: TypeFloatVectorAStack = eqx.field(init=False)
 
+    gap_factor: Optional[TypeFloat] = None
     com: Optional[TypeFloatVector] = None
+    mu: TypeFloat = eqx.field(init=False, static=True)
 
-    mu: TypeFloat
+    update_rigid_particles: Optional[Callable] = eqx.field(init=False, static=True)
 
-    gap_factor: TypeFloat
+    shape_map: ShapeFunctionMapping = eqx.field(init=False)
 
-    update_rigid_particles: Optional[Callable] = eqx.field(static=True)
-
-    shape_map: ShapeFunctionMapping
-
+    #######################################################################################
     def __init__(
         self: Self,
         position_stack: TypeFloatVectorAStack,
-        velocity_stack: TypeFloatVectorAStack = None,
+        velocity_stack: Optional[TypeFloatVectorAStack] = None,
         mu: TypeFloat = 0.0,
         com: Optional[TypeFloatVector] = None,
         gap_factor: Optional[TypeFloat] = 1.0,
         update_rigid_particles: Optional[Callable] = None,
         **kwargs,
-    ) -> Self:
+    ) -> None:
         """Initialize the rigid particles."""
 
         if velocity_stack is None:
@@ -89,6 +84,7 @@ class RigidParticles(Force):
 
         super().__init__(**kwargs)
 
+    #######################################################################################
     def apply_on_grid(
         self: Self,
         material_points: Optional[MaterialPoints] = None,
@@ -108,13 +104,16 @@ class RigidParticles(Force):
         #             - Get contacting nodes and apply the velocities on the grid.
         #"""
 
+        # ------------------------------------------------------------------------------
         def vmap_velocities_p2g_rigid(
             point_id, intr_shapef, intr_shapef_grad, intr_dist
         ):
             intr_velocities = self.velocity_stack.at[point_id].get()
             r_scaled_velocity = intr_shapef * intr_velocities
+
             return r_scaled_velocity
 
+        # -----------------------------------------------------------------------------
         new_r_shape_map, r_scaled_velocity_stack = (
             self.shape_map.vmap_interactions_and_scatter(
                 vmap_velocities_p2g_rigid, position_stack=self.position_stack, grid=grid
@@ -137,21 +136,16 @@ class RigidParticles(Force):
             self.position_stack, jnp.ones(dim), grid
         )
 
+        # -----------------------------------------------------------------------------
         @partial(jax.vmap, in_axes=(0, 0, 0, 0, 0, 0))
         def vmap_nodes(moment_nt, mass, normal, r_vel, mp_pos, rp_pos):
             """Apply the velocities on the grid from the rigid particles."""
             # skip the nodes with small mass, due to numerical instability
-
             normal = normal / (jnp.linalg.vector_norm(normal) + 1e-10)
-
             rel_pos = jnp.dot(mp_pos - rp_pos, normal)
-
             r_contact_mask = rel_pos + self.gap_factor * grid.cell_size <= 0
-
             vel_nt = moment_nt / (mass + 1e-10)
-
             delta_vel = vel_nt - r_vel
-
             delta_vel_dot_normal = jnp.dot(delta_vel, normal)
 
             delta_vel_padded = jnp.pad(
@@ -160,39 +154,32 @@ class RigidParticles(Force):
                 mode="constant",
                 constant_values=0,
             )
-
             norm_padded = jnp.pad(
                 normal,
                 new_r_shape_map._padding,
                 mode="constant",
                 constant_values=0,
             )
-
             delta_vel_cross_normal = jnp.cross(
                 delta_vel_padded, norm_padded
             )  # works only for vectors of len 3
             norm_delta_vel_cross_normal = jnp.linalg.vector_norm(delta_vel_cross_normal)
             # Add epsilon
-
             omega = delta_vel_cross_normal / (norm_delta_vel_cross_normal + 1e-10)
             mu_prime = jnp.minimum(
                 self.mu, norm_delta_vel_cross_normal / (delta_vel_dot_normal + 1e-10)
             )
-
             normal_cross_omega = jnp.cross(
                 norm_padded, omega
             )  # works only for vectors of len 3
-
             tangent = (
                 (norm_padded + mu_prime * normal_cross_omega)
                 .at[: new_r_shape_map.dim]
                 .get()
             )
-
             # sometimes tangent become nan if velocity is zero at initialization
             # which causes problems
             tangent = jnp.nan_to_num(tangent)
-
             new_nodes_vel_nt = jax.lax.cond(
                 ((r_contact_mask) & (delta_vel_dot_normal > 0.0)),
                 # (r_contact_mask),
@@ -204,6 +191,7 @@ class RigidParticles(Force):
             node_moments_nt = new_nodes_vel_nt * mass
             return node_moments_nt
 
+        # ------------------------------------------------------------------------------
         # jax.debug.print("r_nodes_vel_stack {}", r_nodes_vel_stack.max())
 
         moment_nt_stack = vmap_nodes(
@@ -238,4 +226,10 @@ class RigidParticles(Force):
             (new_position_stack, new_velocity_stack, new_com),
         )
 
+        # ------------------------------------------------------------------------------
         return new_grid, new_self
+
+    #######################################################################################
+
+
+###########################################################################################

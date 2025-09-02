@@ -11,6 +11,7 @@ from ..utils.mpm_callback_helpers import get_files
 
 
 def view(output_dir, scalars=None, vminmaxs=None, refresh_rate=0.05):
+
     import time
 
     import numpy as np
@@ -76,6 +77,7 @@ def view(output_dir, scalars=None, vminmaxs=None, refresh_rate=0.05):
     print("Polyscope viewer started")
     print("Press Ctrl+C to exit")
 
+    ############################################################################
     def update():
         global mp_cycler, rp_cycler
         time.sleep(refresh_rate)
@@ -102,5 +104,6 @@ def view(output_dir, scalars=None, vminmaxs=None, refresh_rate=0.05):
                 r_position_stack = input_arrays.get("position_stack", None)
                 r_point_cloud.update_point_positions(r_position_stack)
 
+    ############################################################################
     ps.set_user_callback(update)
     ps.show()

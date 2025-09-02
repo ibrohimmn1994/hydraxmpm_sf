@@ -8,10 +8,9 @@
 from functools import partial
 from typing import Tuple
 
-import jax
 import jax.numpy as jnp
 
-from ..common.types import TypeInt, TypeFloat, TypeFloat3, TypeFloatVector
+from ..common.types import TypeFloat, TypeFloat3, TypeFloatVector, TypeInt
 
 
 def vmap_quadratic_shapefunction(

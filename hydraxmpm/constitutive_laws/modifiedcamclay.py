@@ -10,20 +10,18 @@ from functools import partial
 import equinox as eqx
 import jax
 import jax.numpy as jnp
-
 import optimistix as optx
 from typing_extensions import Optional, Self, Tuple
 
 from ..common.types import (
     TypeFloat,
-    TypeFloatScalarPStack,
     TypeFloatMatrixPStack,
+    TypeFloatScalarPStack,
     TypeInt,
 )
 from ..material_points.material_points import MaterialPoints
 from ..utils.math_helpers import (
     get_dev_strain,
-    get_dev_strain_stack,
     get_dev_stress,
     get_pressure,
     get_q_vm,

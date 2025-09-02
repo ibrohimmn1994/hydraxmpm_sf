@@ -12,13 +12,13 @@ from ..common.types import (
     TypeFloat,
     TypeFloatMatrix3x3,
     TypeFloatMatrix3x3AStack,
-    TypeFloatMatrixAStack,
     TypeFloatScalarAStack,
     TypeFloatVector,
     TypeFloatVectorAStack,
 )
 
 
+#################################################################################
 def get_double_contraction(A, B):
     return jnp.trace(A @ B.T)
 
@@ -27,6 +27,7 @@ def get_double_contraction_stack(A_stack, B_stack):
     return jax.vmap(get_double_contraction)(A_stack, B_stack)
 
 
+#################################################################################
 def get_pressure(stress: TypeFloatMatrix3x3, dim: int = 3) -> TypeFloat:
     """Get compression positive pressure from the cauchy stress tensor.
 
@@ -62,6 +63,7 @@ def get_pressure_stack(
     return vmap_get_pressure(stress_stack, dim)
 
 
+#################################################################################
 def get_dev_stress(stress, pressure=None, dim=3):
     """Get deviatoric part of the cauchy stress tensor.
 
@@ -99,6 +101,7 @@ def get_dev_stress_stack(stress_stack, pressure_stack=None, dim=3):
     return vmap_get_dev_stress(stress_stack, pressure_stack, dim)
 
 
+#################################################################################
 def get_q_vm(stress=None, dev_stress=None, pressure=None, dim=3):
     """Get the scalar von-Mises shear stress from the cauchy stress tensor.
 
@@ -148,6 +151,7 @@ def get_q_vm_stack(
     return vmap_get_q_vm(stress_stack, dev_stress_stack, pressure_stack, dim)
 
 
+#################################################################################
 def get_J2(stress=None, dev_stress=None, pressure=None, dim=3):
     """Get the second invariant of the deviatoric stress tensor."""
     if dev_stress is None:
@@ -166,6 +170,7 @@ def get_J2_stack(
     return vmap_get_J2(stress_stack, dev_stress_stack, pressure_stack, dim)
 
 
+#################################################################################
 def get_scalar_shear_stress(stress, dev_stress=None, pressure=None, dim=3):
     """Get the shear stress tau=sqrt(1/2 J2)."""
     if dev_stress is None:
@@ -180,12 +185,15 @@ def get_scalar_shear_stress_stack(
     if dev_stress_stack is None:
         dev_stress_stack = get_dev_stress_stack(stress_stack, pressure_stack, dim)
     vmap_get_scalar_shear_stress = jax.vmap(
-        get_scalar_shear_stress, in_axes=(0, 0, None, None)
+        get_scalar_shear_stress, in_axes=(None, 0, None, None)
     )
 
     return vmap_get_scalar_shear_stress(
         stress_stack, dev_stress_stack, pressure_stack, dim
     )
+
+
+#################################################################################
 
 
 def get_volumetric_strain(strain):
@@ -199,6 +207,7 @@ def get_volumetric_strain_stack(strain_stack: jax.Array):
     return vmap_get_volumetric_strain(strain_stack)
 
 
+#################################################################################
 def get_dev_strain(strain, volumetric_strain=None, dim=3):
     """Get deviatoric strain tensor."""
     if volumetric_strain is None:
@@ -210,10 +219,11 @@ def get_dev_strain_stack(strain_stack, volumetric_strain_stack=None, dim=3):
     """Get deviatoric strain tensor from a stack of strain tensors."""
     if volumetric_strain_stack is None:
         volumetric_strain_stack = get_volumetric_strain_stack(strain_stack)
-    vmap_get_dev_strain = jax.vmap(get_dev_strain, in_axes=(0))
-    return vmap_get_dev_strain(strain_stack, volumetric_strain_stack)
+    vmap_get_dev_strain = jax.vmap(get_dev_strain, in_axes=(0, None, None))
+    return vmap_get_dev_strain(strain_stack, volumetric_strain_stack, dim)
 
 
+#################################################################################
 def get_scalar_shear_strain(
     strain=None, dev_strain=None, volumetric_strain=None, dim=3
 ):
@@ -228,13 +238,20 @@ def get_scalar_shear_strain_stack(
     strain_stack: jax.Array, dev_strain_stack=None, volumetric_strain_stack=None, dim=3
 ):
     """Get scalar shear strain from a stack of strain tensors."""
+    if dev_strain_stack is None:
+        dev_strain_stack = get_dev_strain_stack(
+            strain_stack, volumetric_strain_stack, dim
+        )
     vmap_get_scalar_shear_strain = jax.vmap(
-        get_scalar_shear_strain, in_axes=(0, 0, 0, None)
+        get_scalar_shear_strain, in_axes=(None, 0, None, None)
     )
 
     return vmap_get_scalar_shear_strain(
         strain_stack, dev_strain_stack, volumetric_strain_stack, dim
     )
+
+
+#################################################################################
 
 
 def get_KE(mass: TypeFloat, velocity: TypeFloatVector) -> TypeFloat:
@@ -250,6 +267,7 @@ def get_KE_stack(
     return vmap_get_KE(masses, velocities)
 
 
+#################################################################################
 def get_inertial_number(pressure, dgamma_dt, p_dia, rho_p):
     """Get MiDi inertial number.
 
@@ -277,6 +295,7 @@ def get_inertial_number_stack(pressure_stack, dgamma_dt_stack, p_dia, rho_p):
     )
 
 
+#################################################################################
 def get_plastic_strain(
     strain,
     elastic_strain,
@@ -291,6 +310,7 @@ def get_plastic_strain_stack(strain_stack, elastic_strain_stack):
     return vmap_get_plastic_strain(strain_stack, elastic_strain_stack)
 
 
+#################################################################################
 def get_small_strain(F):
     """Get small strain tensor from deformation gradient."""
     return 0.5 * (F.T + F) - jnp.eye(3)
@@ -302,6 +322,7 @@ def get_small_strain_stack(F_stack):
     return vmap_get_small_strain(F_stack)
 
 
+#################################################################################
 def get_strain_rate_from_L(L):
     """Get strain rate tensor from velocity gradient."""
     return 0.5 * (L + L.T)
@@ -313,6 +334,7 @@ def get_strain_rate_from_L_stack(L_stack):
     return vmap_get_strain_rate_from_L(L_stack)
 
 
+#################################################################################
 def phi_to_e(phi):
     """Solid volume fraction to void ratio."""
     return (1.0 - phi) / phi
@@ -325,6 +347,7 @@ def phi_to_e_stack(phi_stack):
     return vmap_phi_to_e(phi_stack)
 
 
+#################################################################################
 def e_to_phi(e):
     """
     Convert void ratio to solid volume fraction, assuming gradients are zero.
@@ -357,6 +380,7 @@ def e_to_phi_stack(e_stack):
     return vmap_e_to_phi(e_stack)
 
 
+#################################################################################
 def get_sym_tensor(A):
     """Get symmetric part of a tensor.
 
@@ -387,6 +411,7 @@ def get_sym_tensor_stack(A_stack):
     return vmap_get_sym_tensor(A_stack)
 
 
+#################################################################################
 def get_skew_tensor(A):
     """Get skew-symmetric part of a tensor.
 
@@ -417,6 +442,7 @@ def get_skew_tensor_stack(A_stack):
     return vmap_get_skew_tensor(A_stack)
 
 
+#################################################################################
 def get_phi_from_L(L, phi_prev, dt):
     """Get solid volume fraction from velocity gradient using the mass balance.
 
@@ -434,9 +460,10 @@ def get_phi_from_L(L, phi_prev, dt):
     return phi_next
 
 
+#################################################################################
 def get_e_from_bulk_density(absolute_density, bulk_density):
     """Get void ratio from absolute and bulk density."""
-    return absolute_density / bulk_density
+    return absolute_density / bulk_density - 1
 
 
 def get_phi_from_bulk_density(absolute_density, bulk_density):
@@ -445,6 +472,7 @@ def get_phi_from_bulk_density(absolute_density, bulk_density):
     return e_to_phi(e)
 
 
+# is not the absolute density should be scalar and not stack
 def get_phi_from_bulk_density_stack(absolute_density_stack, bulk_density_stack):
     """Get volume fraction from a stack of absolute and bulk densities.
 
@@ -455,6 +483,9 @@ def get_phi_from_bulk_density_stack(absolute_density_stack, bulk_density_stack):
         get_phi_from_bulk_density, in_axes=(None, 0)
     )
     return vmap_get_phi_from_bulk_density(absolute_density_stack, bulk_density_stack)
+
+
+#################################################################################
 
 
 def get_hencky_strain(F):
@@ -474,10 +505,10 @@ def get_hencky_strain(F):
         Tuple[chex.Array, chex.Array, chex.Array]: strain tensor, left stretch tensor,
         right stretch tensor
     """
-    u, s, vh = jnp.linalg.svd(F, full_matrices=False)
+    uh, s, vh = jnp.linalg.svd(F, full_matrices=False)
 
     eps = jnp.zeros((3, 3)).at[[0, 1, 2], [0, 1, 2]].set(jnp.log(s))
-    return eps, u, vh
+    return eps, uh, vh
 
 
 def get_hencky_strain_stack(F_stack):
@@ -495,6 +526,8 @@ def get_hencky_strain_stack(F_stack):
     return vmap_get_hencky(F_stack)
 
 
+#################################################################################
+# this just the stress in the rest, natural undisturbed condition
 def get_k0_stress(
     height: jnp.float32,
     gravity: jnp.float32,
@@ -520,7 +553,7 @@ def get_k0_stress(
 
     factor = height * gravity * rho_0
 
-    stress = jnp.zeros((3, 3))
+    # stress = jnp.zeros((3, 3))
     stress = jnp.zeros((3, 3)).at[[0, 1, 2], [0, 1, 2]].set(factor * K0)
 
     stress = stress.at[axis_vertical, axis_vertical].set(factor)
@@ -532,3 +565,6 @@ def get_k0_stress(
     mu = (q / p) / jnp.sqrt(3)
 
     return stress
+
+
+#################################################################################

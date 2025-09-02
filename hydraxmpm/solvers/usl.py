@@ -5,7 +5,8 @@
 
 # -*- coding: utf-8 -*-
 
-"""Implementation of the Explicit Update Stress Last (USL) ConstitutiveLaw Point Method (MPM).
+"""Implementation of the Explicit Update Stress Last (USL) ConstitutiveLaw Point Method
+(MPM).
 
 References:
     - De Vaucorbeil, Alban, et al. 'ConstitutiveLaw point method after 25 years:
@@ -27,11 +28,13 @@ from ..material_points.material_points import MaterialPoints
 from .mpm_solver import MPMSolver
 
 
+###########################################################################################################
 class USL(MPMSolver):
     """Update Stress Last (USL) ConstitutiveLaw Point Method (MPM) solver."""
 
     alpha: TypeFloat = eqx.field(default=0.99)
 
+    #######################################################################################################
     def __init__(
         self,
         *,
@@ -48,6 +51,7 @@ class USL(MPMSolver):
         alpha: Optional[TypeFloat] = 1.0,
         **kwargs,
     ):
+
         super().__init__(
             material_points=material_points,
             grid=grid,
@@ -61,8 +65,10 @@ class USL(MPMSolver):
         )
         self.alpha = alpha
 
+    #######################################################################################################
     def update(self: Self, step: TypeInt = 0, dt: TypeFloat = 1e-3) -> Self:
         # loading state
+
         material_points = self.material_points._refresh()
 
         material_points, forces = self._update_forces_on_points(
@@ -102,8 +108,11 @@ class USL(MPMSolver):
             (material_points, grid, constitutive_laws, forces, new_shape_map),
         )
 
+    #######################################################################################################
     def p2g(self, material_points, grid, dt):
+        # ------------------------------------------------------------------------------
         def vmap_intr_p2g(point_id, intr_shapef, intr_shapef_grad, intr_dist):
+
             intr_masses = material_points.mass_stack.at[point_id].get()
             intr_volumes = material_points.volume_stack.at[point_id].get()
             intr_velocities = material_points.velocity_stack.at[point_id].get()
@@ -121,6 +130,7 @@ class USL(MPMSolver):
 
             return scaled_mass, scaled_moments, scaled_total_force, scaled_normal
 
+        # -----------------------------------------------------------------------------
         # note the interactions and shapefunctions are calculated on the
         # p2g to reduce computational overhead.
         (
@@ -135,6 +145,7 @@ class USL(MPMSolver):
             vmap_intr_p2g, material_points, grid
         )
 
+        # ------------------------------------------------------------------------------
         def sum_interactions(stack, scaled_stack):
             return (
                 jnp.zeros_like(stack)
@@ -142,6 +153,7 @@ class USL(MPMSolver):
                 .add(scaled_stack)
             )
 
+        # ------------------------------------------------------------------------------
         # sum
         new_mass_stack = sum_interactions(grid.mass_stack, scaled_mass_stack)
         new_moment_stack = sum_interactions(grid.moment_stack, scaled_moment_stack)
@@ -153,6 +165,7 @@ class USL(MPMSolver):
         # integrate
         new_moment_nt_stack = new_moment_stack + new_force_stack * self.dt
 
+        # ------------------------------------------------------------------------------
         return new_shape_map, eqx.tree_at(
             lambda state: (
                 state.mass_stack,
@@ -164,8 +177,12 @@ class USL(MPMSolver):
             (new_mass_stack, new_moment_stack, new_moment_nt_stack, new_normal_stack),
         )
 
+    #######################################################################################################
     def g2p(self, material_points, grid, shape_map, dt) -> MaterialPoints:
+
+        # ------------------------------------------------------------------------------
         def vmap_intr_g2p(intr_hashes, intr_shapef, intr_shapef_grad, _):
+
             intr_masses = grid.mass_stack.at[intr_hashes].get()
             intr_moments = grid.moment_stack.at[intr_hashes].get()
             intr_moments_nt = grid.moment_nt_stack.at[intr_hashes].get()
@@ -185,9 +202,7 @@ class USL(MPMSolver):
                 intr_moments_nt,
             )
             intr_delta_vels = intr_vels_nt - intr_vels
-
             intr_scaled_delta_vels = intr_shapef * intr_delta_vels
-
             intr_scaled_vels_nt = intr_shapef * intr_vels_nt
 
             # Pad velocities for plane strain
@@ -204,12 +219,14 @@ class USL(MPMSolver):
 
             return intr_scaled_delta_vels, intr_scaled_vels_nt, intr_scaled_velgrad
 
+        # ------------------------------------------------------------------------------
         (
             new_intr_scaled_delta_vel_stack,
             new_intr_scaled_vel_nt_stack,
             new_intr_scaled_velgrad_stack,
         ) = shape_map.vmap_intr_gather(vmap_intr_g2p)
 
+        # ------------------------------------------------------------------------------
         @partial(jax.vmap, in_axes=0)
         def vmap_particles_update(
             intr_delta_vels_reshaped,
@@ -221,26 +238,24 @@ class USL(MPMSolver):
             p_volumes_orig,
         ):
             """Update particle quantities by summing interaction quantities."""
-            p_velgrads_next = jnp.sum(intr_velgrad_reshaped, axis=0)
 
+            p_velgrads_next = jnp.sum(intr_velgrad_reshaped, axis=0)
             delta_vels = jnp.sum(intr_delta_vels_reshaped, axis=0)
             vels_nt = jnp.sum(intr_vels_nt_reshaped, axis=0)
-
             p_velocities_next = (1.0 - self.alpha) * vels_nt + self.alpha * (
                 p_velocities + delta_vels
             )
 
             p_positions_next = p_positions + vels_nt * dt
-
             if self.dim == 2:
                 p_velgrads_next = p_velgrads_next.at[2, 2].set(0)
 
             p_F_next = (jnp.eye(3) + p_velgrads_next * dt) @ p_F
-
             if self.dim == 2:
                 p_F_next = p_F_next.at[2, 2].set(1)
 
             p_volumes_next = jnp.linalg.det(p_F_next) * p_volumes_orig
+
             return (
                 p_velocities_next,
                 p_positions_next,
@@ -249,6 +264,7 @@ class USL(MPMSolver):
                 p_velgrads_next,
             )
 
+        # ------------------------------------------------------------------------------
         (
             new_velocity_stack,
             new_position_stack,
@@ -267,6 +283,8 @@ class USL(MPMSolver):
             material_points.volume0_stack,
         )
 
+        # ------------------------------------------------------------------------------
+
         return eqx.tree_at(
             lambda state: (
                 state.volume_stack,
@@ -284,3 +302,6 @@ class USL(MPMSolver):
                 new_velocity_stack,
             ),
         )
+
+
+###########################################################################################################

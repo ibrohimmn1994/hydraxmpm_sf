@@ -6,17 +6,10 @@
 # -*- coding: utf-8 -*-
 
 import matplotlib.pyplot as plt
-from matplotlib.ticker import (
-    LogLocator,
-    ScalarFormatter,
-    FormatStrFormatter,
-    NullFormatter,
-    StrMethodFormatter,
-)
-
-from matplotlib import ticker
+from matplotlib.ticker import ScalarFormatter
 
 
+####################################################################################
 def make_plot(
     ax,
     x,
@@ -70,6 +63,7 @@ def make_plot(
     return out
 
 
+####################################################################################
 def plot_set1(
     p_stack,
     q_vm_stack,
@@ -173,6 +167,9 @@ def plot_set1(
     )
 
     return fig, ax
+
+
+####################################################################################
 
 
 def plot_set1_short(

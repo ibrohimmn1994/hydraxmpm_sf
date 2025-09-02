@@ -7,7 +7,7 @@
 
 """Module for the gravity force. Impose gravity on the nodes."""
 
-from typing import List, Optional, Tuple, Any
+from typing import Any, List, Optional, Tuple
 
 import equinox as eqx
 import jax
@@ -20,16 +20,20 @@ from ..material_points.material_points import MaterialPoints
 from .force import Force
 
 
+#####################################################################################
 class Gravity(Force):
     """Gravity force enforced on the background grid."""
 
-    gravity: TypeFloatVector
-    increment: Optional[TypeFloatVector]
-    stop_ramp_step: Optional[TypeInt]
-    particle_gravity: bool = eqx.field(static=True, converter=lambda x: bool(x))
+    gravity: TypeFloatVector = eqx.field(init=False)
+    increment: Optional[TypeFloatVector] = eqx.field(init=False)
+    stop_ramp_step: Optional[TypeInt] = eqx.field(init=False)
+    particle_gravity: bool = eqx.field(
+        init=False, static=True, converter=lambda x: bool(x)
+    )
 
-    dt: TypeFloat = eqx.field(static=True)
+    dt: TypeFloat = eqx.field(init=False, static=True)
 
+    ################################################################################
     def __init__(
         self: Self,
         gravity: TypeFloatVector | List | Tuple,
@@ -37,7 +41,7 @@ class Gravity(Force):
         stop_ramp_step: Optional[TypeInt] = 0,
         particle_gravity: Optional[bool] = True,
         **kwargs,
-    ) -> Self:
+    ) -> None:
         """Initialize Gravity force on Nodes."""
         self.gravity = jnp.array(gravity)
 
@@ -49,6 +53,7 @@ class Gravity(Force):
 
         self.dt = kwargs.get("dt", 0.001)
 
+    ################################################################################
     def apply_on_grid(
         self: Self,
         material_points: Optional[MaterialPoints] = None,
@@ -60,6 +65,7 @@ class Gravity(Force):
     ) -> Tuple[Grid, Self]:
         """Apply gravity on the nodes."""
 
+        # if particle gravity then do not apply on the ndoes
         if self.particle_gravity:
             return grid, self
 
@@ -72,6 +78,7 @@ class Gravity(Force):
 
         moment_gravity = grid.mass_stack.reshape(-1, 1) * gravity * dt
 
+        "we are addint to moment_nt cauiton here"
         new_moment_nt_stack = grid.moment_nt_stack + moment_gravity
         # not used?
         # new_moment_stack = grid.moment_stack + moment_gravity
@@ -82,9 +89,11 @@ class Gravity(Force):
             (new_moment_nt_stack),
         )
 
-        # self is updated if there is a gravity ramp
+        # self is updated if there is a gravity stop_ramp_step
+        "no it is not"
         return new_grid, self
 
+    ################################################################################
     def apply_on_points(
         self: Self,
         material_points: Optional[MaterialPoints] = None,
@@ -113,3 +122,5 @@ class Gravity(Force):
             (jax.vmap(get_gravitational_force)(material_points.mass_stack)),
         )
         return new_particles, self
+
+    ################################################################################
