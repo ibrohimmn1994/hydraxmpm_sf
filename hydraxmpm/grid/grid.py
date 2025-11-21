@@ -54,7 +54,7 @@ class Grid(eqx.Module):
     origin: tuple = eqx.field(static=True)
     end: tuple = eqx.field(static=True)
     cell_size: float = eqx.field(static=True)
-    num_cells: int = eqx.field(init=False, static=True, converter=lambda x: int(x))
+    num_nodes: int = eqx.field(init=False, static=True, converter=lambda x: int(x))
     grid_size: tuple = eqx.field(init=False, static=True)
     dim: int = eqx.field(static=True, init=False)
 
@@ -73,8 +73,8 @@ class Grid(eqx.Module):
     ##################################################################################
     def __init__(
         self,
-        origin: TypeFloat3 | tuple,
-        end: TypeFloat3 | tuple,
+        origin: TypeFloat | tuple,
+        end: TypeFloat | tuple,
         cell_size: TypeFloat,
         small_mass_cutoff: TypeFloat = 1e-8,
         **kwargs,
@@ -91,7 +91,7 @@ class Grid(eqx.Module):
             np.int64
         )
 
-        self.num_cells = int(np.prod(grid_size_, dtype=np.int64))
+        self.num_nodes = int(np.prod(grid_size_, dtype=np.int64))
 
         # convert to tuple after calculation
         # self.grid_size = tuple(grid_size_.tolist())
@@ -99,14 +99,14 @@ class Grid(eqx.Module):
         self.origin = tuple(origin_.tolist())
         self.end = tuple(end_.tolist())
 
-        self.mass_stack = jnp.zeros(self.num_cells)
-        self.moment_stack = jnp.zeros((self.num_cells, self.dim))
-        self.moment_nt_stack = jnp.zeros((self.num_cells, self.dim))
+        self.mass_stack = jnp.zeros(self.num_nodes)
+        self.moment_stack = jnp.zeros((self.num_nodes, self.dim))
+        self.moment_nt_stack = jnp.zeros((self.num_nodes, self.dim))
         # do self.type_stack = jnp.full((selfnum_cells,)),3,dtype=jnp.uint32)
         self.type_stack = (
-            jnp.zeros(self.num_cells, dtype=jnp.uint32).at[0].set(3)
+            jnp.zeros(self.num_nodes, dtype=jnp.uint32).at[0].set(3)
         )  # inside domain
-        self.normal_stack = jnp.zeros((self.num_cells, self.dim))
+        self.normal_stack = jnp.zeros((self.num_nodes, self.dim))
 
         self.small_mass_cutoff = float(small_mass_cutoff)
 
@@ -174,3 +174,83 @@ class Grid(eqx.Module):
         return self.position_mesh.reshape(-1, self.dim)
 
     ##################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

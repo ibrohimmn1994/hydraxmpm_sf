@@ -112,6 +112,7 @@ class ShapeFunctionMapping(Base):
             jnp.uint32
         )
         self.dim = dim
+    
         self._padding = (0, 3 - self.dim)
 
     #################################################################################
@@ -145,6 +146,7 @@ class ShapeFunctionMapping(Base):
             intr_grid_pos.astype(jnp.int32), grid_size, mode="wrap"
         ).astype(jnp.uint32)
 
+        "Check what is this again"
         intr_node_type = node_type_stack.at[intr_hash].get()
 
         intr_dist = rel_pos - intr_grid_pos
@@ -180,47 +182,7 @@ class ShapeFunctionMapping(Base):
         return intr_dist_padded, intr_hash, shapef, shapef_grad_padded
 
     #################################################################################
-    # def _get_particle_grid_interactions_batched(
-    #     self, material_points: MaterialPoints, grid: Grid
-    # ):
-    #     """get particle grid interactions / shapefunctions
-    #     Batched version of get_interaction."""
-    #     (
-    #         new_intr_dist_stack,
-    #         new_intr_hash_stack,
-    #         new_intr_shapef_stack,
-    #         new_intr_shapef_grad_stack,
-    #     ) = jax.vmap(
-    #         self._get_particle_grid_interaction,
-    #         in_axes=(0, None, None, None, None, None, None),
-    #     )(
-    #         self._intr_id_stack,
-    #         grid.type_stack.reshape(-1),
-    #         material_points.position_stack,
-    #         jnp.array(grid.origin),
-    #         grid._inv_cell_size,
-    #         grid.grid_size,
-    #         False,
-    #     )
-    #
-    #     return eqx.tree_at(
-    #         lambda state: (
-    #             state._intr_dist_stack,
-    #             state._intr_hash_stack,
-    #             state._intr_shapef_stack,
-    #             state._intr_shapef_grad_stack,
-    #         ),
-    #         self,
-    #         (
-    #             new_intr_dist_stack,
-    #             new_intr_hash_stack,
-    #             new_intr_shapef_stack,
-    #             new_intr_shapef_grad_stack,
-    #         ),
-    #     )
-    #
-    # #################################################################################
-    # particle to grid, get interactions
+   # particle to grid, get interactions
     def vmap_interactions_and_scatter(
         self,
         p2g_func: Callable,
@@ -315,7 +277,6 @@ class ShapeFunctionMapping(Base):
             intr_X = X_stack.at[point_id].get()
             intr_mass = mass_stack.at[point_id].get()
             scaled_X = shapef * intr_mass * intr_X
-
             scaled_mass = shapef * intr_mass
             return scaled_X, scaled_mass
 
@@ -324,7 +285,7 @@ class ShapeFunctionMapping(Base):
         zeros_N_mass_stack = jnp.zeros_like(grid.mass_stack)
 
         out_shape = X_stack.shape[1:]
-        zero_node_X_stack = jnp.zeros((grid.num_cells, *out_shape))
+        zero_node_X_stack = jnp.zeros((grid.num_nodes, *out_shape))
 
         nodes_mass_stack = zeros_N_mass_stack.at[self._intr_hash_stack].add(
             scaled_mass_stack
@@ -347,38 +308,7 @@ class ShapeFunctionMapping(Base):
             return self, jax.vmap(divide)(nodes_X_stack, nodes_mass_stack)
         return jax.vmap(divide)(nodes_X_stack, nodes_mass_stack)
 
-    #################################################################################
-    # def map_p2g2g(self, X_stack, mass_stack=None, grid=None, return_self=False):
-    #
-    #     new_self, N_stack = self.map_p2g(X_stack, mass_stack, grid, return_self=True)
-    #
-    #     # ------------------------------------------------------------------------------
-    #     def vmap_intr_g2p(intr_hashes, intr_shapef, intr_shapef_grad, intr_dist_padded):
-    #         return intr_shapef * N_stack.at[intr_hashes].get()
-    #         #      (num_p*w)     (num_n)    (num_p*w)
-    #
-    #     # ------------------------------------------------------------------------------
-    #     scaled_N_stack = new_self.vmap_intr_gather(vmap_intr_g2p)
-    #
-    #     out_shape = N_stack.shape[1:]  # shapef of the value in (num_n)
-    #
-    #     # ------------------------------------------------------------------------------
-    #     @partial(jax.vmap, in_axes=(0))
-    #     def update_P_stack(scaled_N_stack):
-    #         return jnp.sum(scaled_N_stack, axis=0)  # sum the w values along num_p
-    #
-    #     # ------------------------------------------------------------------------------
-    #     if return_self:
-    #         # form (num_p*w of value_shape) into (num_p,w,value_shape)
-    #         return new_self, update_P_stack(
-    #             scaled_N_stack.reshape(-1, self._window_size, *out_shape)
-    #         )
-    #     else:
-    #         return update_P_stack(
-    #             scaled_N_stack.reshape(-1, self._window_size, *out_shape)
-    #         )
-    #
-    # #################################################################################
+   # #################################################################################
     "why could not we just directly get these for the grid or material_points"
     "could not we lump all of these into the same function"
 
@@ -463,41 +393,39 @@ class ShapeFunctionMapping(Base):
     #################################################################################
 
 
-#####################################################################################
-# @property
-# def p2g_specific_volume_stack(self):
-#     specific_volume_stack = self.material_points.specific_volume_stack(
-#         rho_p=self.constitutive_laws[0].rho_p
-#     )
-#     return self.map_p2g(X_stack=specific_volume_stack)
 
-# @property
-# def p2g_viscosity_stack(self):
-#     q_stack = self.p2g_q_vm_stack
-#     dgamma_dt_stack = self.p2g_dgamma_dt_stack
-#     return (jnp.sqrt(3) * q_stack) / dgamma_dt_stack
 
-# @property
-# def p2g_inertial_number_stack(self):
-#     pdgamma_dt_stack = self.p2g_dgamma_dt_stack
-#     p_stack = self.p2g_p_stack
-#     inertial_number_stack = get_inertial_number_stack(
-#         p_stack,
-#         pdgamma_dt_stack,
-#         p_dia=self.constitutive_laws[0].d,
-#         rho_p=self.constitutive_laws[0].rho_p,
-#     )
 
-#     return inertial_number_stack
 
-# @property
-# def p2g_PE_stack(self):
-#     PE_stack = self.material_points.PE_stack(
-#         self.dt,
-#         self.constitutive_laws[0].W_stack,
-#     )
-#     return self.map_p2g(X_stack=PE_stack)
 
-# @property
-# def p2g_KE_PE_stack(self):
-#     return self.p2g_KE_stack / self.p2g_PE_stack
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

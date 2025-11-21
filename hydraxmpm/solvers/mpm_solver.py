@@ -142,11 +142,13 @@ class MPMSolver(Base):
             self.grid.cell_size, self.ppc
         )
 
+        "How this work exaclty if we have multiple consitutives"
         for constitutive_law in self.constitutive_laws:
             new_constitutive_law, new_material_points = constitutive_law.init_state(
                 new_material_points
             )
             new_constitutive_laws.append(new_constitutive_law)
+
         new_constitutive_laws = tuple(new_constitutive_laws)
         new_grid = self.grid.init_padding(self.shapefunction)
 
@@ -185,6 +187,7 @@ class MPMSolver(Base):
     ) -> Tuple[MaterialPoints, Tuple[Force, ...]]:
 
         # called within solver .update method
+        "For every force we are using the same old MP so do we really need to updated"
         new_forces = []
         for force in forces:
             material_points, new_force = force.apply_on_points(
@@ -208,6 +211,7 @@ class MPMSolver(Base):
     ) -> Tuple[Grid, Tuple[Force, ...]]:
 
         # called within solver .update method
+        "Same as above"
         new_forces = []
         for force in forces:
             grid, new_force = force.apply_on_grid(
@@ -231,6 +235,7 @@ class MPMSolver(Base):
     ) -> Tuple[MaterialPoints, Tuple[ConstitutiveLaw, ...]]:
 
         # called within solver .update method
+        "Same as above"
         new_materials = []
         for material in constitutive_laws:
             material_points, new_material = material.update(
@@ -400,3 +405,23 @@ class MPMSolver(Base):
 
 
 #######################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

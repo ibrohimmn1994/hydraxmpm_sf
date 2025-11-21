@@ -90,6 +90,7 @@ class DruckerPrager(ConstitutiveLaw):
     mu_1_hat: TypeFloat = eqx.field(init=False)
     H: TypeFloat = eqx.field(init=False)
 
+    "Are not these already defined in the parent class??"
     eps_e_stack: Optional[TypeFloatMatrix3x3PStack] = None
     p_0_stack: Optional[TypeFloatScalarPStack] = None
     eps_p_acc_stack: Optional[TypeFloatScalarPStack] = None
@@ -125,6 +126,7 @@ class DruckerPrager(ConstitutiveLaw):
     ####################################################################################
     def init_state(self: Self, material_points: MaterialPoints):
 
+        "This is function to get p from stress"
         p_0_stack = material_points.p_stack
         vmap_give_rho_ref = partial(
             jax.vmap,

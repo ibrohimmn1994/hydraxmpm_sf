@@ -219,8 +219,8 @@ def get_dev_strain_stack(strain_stack, volumetric_strain_stack=None, dim=3):
     """Get deviatoric strain tensor from a stack of strain tensors."""
     if volumetric_strain_stack is None:
         volumetric_strain_stack = get_volumetric_strain_stack(strain_stack)
-    vmap_get_dev_strain = jax.vmap(get_dev_strain, in_axes=(0, None, None))
-    return vmap_get_dev_strain(strain_stack, volumetric_strain_stack, dim)
+    vmap_get_dev_strain = jax.vmap(get_dev_strain, in_axes=(0))
+    return vmap_get_dev_strain(strain_stack, volumetric_strain_stack)
 
 
 #################################################################################

@@ -16,7 +16,6 @@ from ..grid.grid import Grid
 from ..material_points.material_points import MaterialPoints
 from .force import Force
 
-
 #################################################################################
 def create_boundary_slice(axis, side, grid_size, thickness):
     if axis == 0:  # x-axis
@@ -118,29 +117,29 @@ class SlipStickBoundary(Force):
         y1_slice = create_boundary_slice(
             axis=1, side=1, grid_size=grid.grid_size, thickness=self.thickness
         )
-        # new_self = SlipStickBoundary(
-        #     x0=self.x0,
-        #     x1=self.x1,
-        #     y0=self.y0,
-        #     y1=self.y1,
-        #     z0=self.z0,
-        #     z1=self.z1,
-        #     thickness=self.thickness,
-        #     x0_slice=x0_slice,
-        #     x1_slice=x1_slice,
-        #     y0_slice=y0_slice,
-        #     y1_slice=y1_slice,
-        # )
-        new_self = eqx.tree_at(
-            lambda state: (
-                state.x0_slice,
-                state.x1_slice,
-                state.y0_slice,
-                state.y1_slice,
-            ),
-            self,
-            (x0_slice, x1_slice, y0_slice, y1_slice),
+        new_self = SlipStickBoundary(
+            x0=self.x0,
+            x1=self.x1,
+            y0=self.y0,
+            y1=self.y1,
+            z0=self.z0,
+            z1=self.z1,
+            thickness=self.thickness,
+            x0_slice=x0_slice,
+            x1_slice=x1_slice,
+            y0_slice=y0_slice,
+            y1_slice=y1_slice,
         )
+        # new_self = eqx.tree_at(
+        #     lambda state: (
+        #         state.x0_slice,
+        #         state.x1_slice,
+        #         state.y0_slice,
+        #         state.y1_slice,
+        #     ),
+        #     self,
+        #     (x0_slice, x1_slice, y0_slice, y1_slice),
+        # )
 
         return new_self, grid
 

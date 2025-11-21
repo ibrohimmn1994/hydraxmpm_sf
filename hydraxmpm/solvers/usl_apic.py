@@ -138,7 +138,10 @@ class USL_APIC(MPMSolver):
         )
 
     ##############################################################################
+    " We are not normalizing on the mass and we are not applying mass-cutoff"
+    "It seems we do the mass-cutoff in g2p"
     def p2g(self, material_points, grid, dt):
+
         def vmap_intr_p2g(point_id, intr_shapef, intr_shapef_grad, intr_dist):
             intr_masses = material_points.mass_stack.at[point_id].get()
             intr_volumes = material_points.volume_stack.at[point_id].get()
@@ -148,6 +151,7 @@ class USL_APIC(MPMSolver):
 
             intr_Bp = self.Bp_stack.at[point_id].get()  # APIC affine matrix
 
+            "But we already have Dp_inv, and is the Dp the same for all particles !"
             affine_velocity = (
                 intr_Bp @ jnp.linalg.inv(self.Dp)
             ) @ intr_dist  # intr_dist is 3D
@@ -167,6 +171,8 @@ class USL_APIC(MPMSolver):
 
             return scaled_mass, scaled_moments, scaled_total_force, scaled_normal
 
+        
+        #______________________________________________________________________
         # note the interactions and shapefunctions are calculated on the
         # p2g to reduce computational overhead.
         (
@@ -181,6 +187,7 @@ class USL_APIC(MPMSolver):
             vmap_intr_p2g, material_points, grid
         )
 
+        #______________________________________________________________________
         def sum_interactions(stack, scaled_stack):
             return (
                 jnp.zeros_like(stack)
@@ -188,6 +195,7 @@ class USL_APIC(MPMSolver):
                 .add(scaled_stack)
             )
 
+        #______________________________________________________________________
         # sum
         new_mass_stack = sum_interactions(grid.mass_stack, scaled_mass_stack)
         new_moment_stack = sum_interactions(grid.moment_stack, scaled_moment_stack)
@@ -198,6 +206,7 @@ class USL_APIC(MPMSolver):
 
         nodes_moment_nt_stack = new_moment_stack + new_force_stack * dt
 
+        #______________________________________________________________________
         return new_shape_map, eqx.tree_at(
             lambda state: (
                 state.mass_stack,
@@ -211,10 +220,13 @@ class USL_APIC(MPMSolver):
 
     ##############################################################################
     def g2p(self, material_points, grid, shape_map, dt) -> Tuple[Self, MaterialPoints]:
+
+        "This func is already serial/interaction so do we need to use lax.cond"
         def vmap_intr_g2p(intr_hashes, intr_shapef, intr_shapef_grad, intr_dist):
             intr_masses = grid.mass_stack.at[intr_hashes].get()
             intr_moments_nt = grid.moment_nt_stack.at[intr_hashes].get()
 
+            "We are doing mass-cutoff only for the moments_nt!"
             intr_vels_nt = jax.lax.cond(
                 intr_masses > grid.small_mass_cutoff,
                 lambda x: x / intr_masses,
@@ -232,6 +244,7 @@ class USL_APIC(MPMSolver):
                 constant_values=0,
             )
 
+            "Is Bp per interaction and should not be per particle"
             # APIC affine matrix
             intr_Bp = (
                 intr_shapef
@@ -239,9 +252,11 @@ class USL_APIC(MPMSolver):
                 @ intr_dist.reshape(-1, 1).T
             )
 
+            "The DP seems never updated!"
             intr_scaled_velgrad = intr_Bp @ self.Dp_inv
 
             return intr_scaled_vels_nt, intr_scaled_velgrad, intr_Bp
+        #______________________________________________________________________
 
         (
             new_intr_scaled_vel_nt_stack,
@@ -249,6 +264,9 @@ class USL_APIC(MPMSolver):
             new_intr_Bp_stack,
         ) = shape_map.vmap_intr_gather(vmap_intr_g2p)
 
+        
+        #______________________________________________________________________
+        "Serial/particle"
         @partial(jax.vmap, in_axes=0)
         def vmap_particles_update(
             intr_vels_nt_reshaped,
@@ -265,6 +283,7 @@ class USL_APIC(MPMSolver):
 
             p_Bp_next = jnp.sum(intr_Bp, axis=0)
 
+            "Why do we do this?"
             if self.dim == 2:
                 p_Bp_next = p_Bp_next.at[2, 2].set(0)
 
@@ -281,6 +300,7 @@ class USL_APIC(MPMSolver):
                 p_F_next = p_F_next.at[2, 2].set(1)
 
             p_volumes_next = jnp.linalg.det(p_F_next) * p_volumes_orig
+
             return (
                 p_velocities_next,
                 p_positions_next,
@@ -290,6 +310,7 @@ class USL_APIC(MPMSolver):
                 p_Bp_next,
             )
 
+        #______________________________________________________________________
         (
             new_velocity_stack,
             new_position_stack,
@@ -310,6 +331,7 @@ class USL_APIC(MPMSolver):
             material_points.volume0_stack,
         )
 
+        #______________________________________________________________________
         new_solver = eqx.tree_at(
             lambda state: (state.Bp_stack),
             self,
@@ -340,3 +362,123 @@ class USL_APIC(MPMSolver):
 
 
 ###################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

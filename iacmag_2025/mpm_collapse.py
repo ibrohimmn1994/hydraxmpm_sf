@@ -10,6 +10,7 @@ import hydraxmpm as hdx
 print(jax.devices("gpu"))
 jax.config.update("jax_default_device", jax.devices("gpu")[0])
 
+import time
 # import os
 
 # import hydraxmpm as hdx
@@ -102,8 +103,8 @@ solver = hdx.USL_APIC(
     ppc=ppc,
     material_points=hdx.MaterialPoints(position_stack=position_stack, p_stack=0.0),
     grid=hdx.Grid(
-        origin=[0.0, 0.0],
-        end=[domain_width, domain_height],
+        origin=(0.0, 0.0),
+        end=(domain_width, domain_height),
         cell_size=cell_size,
     ),
     constitutive_laws=models[model_index],
@@ -144,6 +145,8 @@ output_dir = os.path.join(
     dir_path, "output/{}".format(models[model_index].other["project"])
 )
 
+start = time.time()
+
 solver = solver.run(
     output_dir=output_dir,
     total_time=1.0,
@@ -155,6 +158,8 @@ solver = solver.run(
     dt_max=1e-5,  # at least 1e-5
 )
 
+end = time.time()
+print("Execution time :", end - start, "seconds")
 
 hdx.viewer.view(output_dir, ["p_stack", "gamma_stack"])
 
@@ -166,3 +171,43 @@ hdx.npz_to_vtk(
     verbose=False,
     kind=["shape_map", "material_points"],
 )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
