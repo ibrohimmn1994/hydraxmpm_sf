@@ -1,14 +1,19 @@
 """Granular column collapse"""
 
+import os
+
 import jax
 import jax.numpy as jnp
+
+import hydraxmpm as hdx
 
 print(jax.devices("gpu"))
 jax.config.update("jax_default_device", jax.devices("gpu")[0])
 
-import os
+import time
+# import os
 
-import hydraxmpm as hdx
+# import hydraxmpm as hdx
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -57,18 +62,18 @@ models = (
         rho_p=rho_0,
         other=dict(project="dp"),
     ),
-    hdx.ModifiedCamClay(
-        nu=0.3,
-        M=mu * jnp.sqrt(3),
-        lam=0.0058,
-        kap=0.0012,
-        R=1.0,
-        # p=1Pa reference limit
-        rho_0=rho_0,
-        rho_p=rho_0,
-        other=dict(project="mcc"),
-    ),
-    # hdx.MuI_incompressible(
+    # hdx.ModifiedCamClay(
+    #     nu=0.3,
+    #     M=mu * jnp.sqrt(3),
+    #     lam=0.0058,
+    #     kap=0.0012,
+    #     R=1.0,
+    #     # p=1Pa reference limit
+    #     rho_0=rho_0,
+    #     rho_p=rho_0,
+    #     other=dict(project="mcc"),
+    # ),
+    # # hdx.MuI_incompressible(
     #     mu_s=mu,
     #     mu_d=2.9,
     #     I_0=0.279,
@@ -81,13 +86,13 @@ models = (
     # # fluid becomes unstable
     # so we damp numericallly
     # and increase time step
-    hdx.NewtonFluid(
-        other=dict(project="fluid", alpha=0.9, dt_alpha=0.01),
-        K=K,
-        viscosity=0.002,
-        alpha=7.0,
-        rho_0=rho_0,
-    ),
+    #     hdx.NewtonFluid(
+    #         other=dict(project="fluid", alpha=0.9, dt_alpha=0.01),
+    #         K=K,
+    #         viscosity=0.002,
+    #         alpha=7.0,
+    #         rho_0=rho_0,
+    #     ),
 )
 
 # it was AS_FLIP
@@ -98,8 +103,8 @@ solver = hdx.USL_APIC(
     ppc=ppc,
     material_points=hdx.MaterialPoints(position_stack=position_stack, p_stack=0.0),
     grid=hdx.Grid(
-        origin=[0.0, 0.0],
-        end=[domain_width, domain_height],
+        origin=(0.0, 0.0),
+        end=(domain_width, domain_height),
         cell_size=cell_size,
     ),
     constitutive_laws=models[model_index],
@@ -140,6 +145,8 @@ output_dir = os.path.join(
     dir_path, "output/{}".format(models[model_index].other["project"])
 )
 
+start = time.time()
+
 solver = solver.run(
     output_dir=output_dir,
     total_time=1.0,
@@ -151,6 +158,8 @@ solver = solver.run(
     dt_max=1e-5,  # at least 1e-5
 )
 
+end = time.time()
+print("Execution time :", end - start, "seconds")
 
 hdx.viewer.view(output_dir, ["p_stack", "gamma_stack"])
 
@@ -162,3 +171,43 @@ hdx.npz_to_vtk(
     verbose=False,
     kind=["shape_map", "material_points"],
 )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

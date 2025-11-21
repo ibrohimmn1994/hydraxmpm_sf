@@ -14,18 +14,20 @@ import numpy as np
 # Using scienceplots for better styles
 from matplotlib.lines import Line2D
 
+####################################################################################
 # define input and output directories
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 sim_dir = os.path.join(dir_path, "output/dp")  # contains simulation data
 plot_dir = os.path.join(dir_path, "plots")  # plot directory
 
-plt.style.use(["science", "no-latex"])
+#plt.style.use(["science", "no-latex"])
 mp_color_cycle = plt.get_cmap(
     "RdYlBu", 2
 )  # Two-color colormap for failure/non-failure states
 
 
+####################################################################################
 def get_files(output_dr, prefix):
     """
     Loads output files and sorts them by step number. Prefix can be `material_points` or `shape_map`.
@@ -43,6 +45,7 @@ def get_files(output_dr, prefix):
 
     return [output_dr + "/" + x for x in selected_files_sorted]
 
+####################################################################################
 
 # load experimental data from Bui, Ha H., et al. 2008
 # https://doi.org/10.1002/nag.688
@@ -73,6 +76,7 @@ selected_indices = [0, 10, 100]
 position_stack0 = np.load(sim_outputs[0]).get("position_stack")
 
 
+####################################################################################
 # This part is used to determine the average pressure
 all_pressures = []
 for i in range(100):
@@ -128,6 +132,7 @@ for i, index in enumerate(selected_indices):
 
 ax.flat[0].set_ylabel("y [m] ")  # Shared ylabel for all subplots
 
+####################################################################################
 # Custom legend creation with adjusted marker sizes
 # two reasons why custom legend is needed:
 # 1. legend at the bottom of the figure of all subplots
@@ -164,3 +169,61 @@ fig.legend(
 
 
 plt.savefig(plot_dir + "/mpm_benchmark.png")
+
+####################################################################################
+# Normalized run-out metric
+# Define L_initial from the initial simulation geometry and compare
+# final run-out against the experiment using the same reference length.
+try:
+    # Initial length and front position
+    x0 = position_stack0[:, 0]
+    L_initial = float(np.max(x0) - np.min(x0))
+    x0_max = float(np.max(x0))
+
+    # Final simulation front position
+    position_stack_final = np.load(sim_outputs[-1]).get("position_stack")
+    x_sim_final_max = float(np.max(position_stack_final[:, 0]))
+
+    # Final experimental front position (from digitized free surface)
+    x_exp_final_max = float(np.max(surface[:, 0]))
+
+    print("Simulation run-put: {:.4f}".format(x_sim_final_max))
+    print("experimental run-put: {:.4f}".format(x_exp_final_max))
+    # Normalized run-out: (L_final - L_initial) / L_initial
+    # Using front position relative to the initial rear wall reference,
+    # this simplifies to (x_final_max - x0_max) / L_initial
+    norm_runout_sim = (x_sim_final_max - x0_max) / L_initial
+    norm_runout_exp = (x_exp_final_max - x0_max) / L_initial
+    norm_runout_diff = norm_runout_sim - norm_runout_exp
+
+    # Report to console
+    print("Normalized run-out (sim): {:.4f}".format(norm_runout_sim))
+    print("Normalized run-out (exp): {:.4f}".format(norm_runout_exp))
+    print(
+        "Difference (sim - exp): {:+.4f} |abs|: {:.4f}".format(
+            norm_runout_diff, abs(norm_runout_diff)
+        )
+    )
+
+except Exception as e:
+    # Keep plotting robust even if files or arrays are missing
+    print("Warning: failed to compute normalized run-out:", e)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

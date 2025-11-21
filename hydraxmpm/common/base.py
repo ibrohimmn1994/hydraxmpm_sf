@@ -6,12 +6,11 @@
 # -*- coding: utf-8 -*-
 
 import dataclasses
-from typing import Self, Optional, Dict
+from typing import Dict, Optional, Self
 
 import equinox as eqx
 
 # from typeguard import typechecked
-from jaxtyping import Array, Float, jaxtyped
 
 
 class Base(eqx.Module):
@@ -21,7 +20,7 @@ class Base(eqx.Module):
     other: Optional[Dict] = eqx.field(static=True, default=None)
     error_check: bool = eqx.field(static=True, default=False)
 
-    def __init__(self: Self, **kwargs) -> Self:
+    def __init__(self: Self, **kwargs) -> None:
         self.name = kwargs.get("name", None)
         self.other = kwargs.get("other", None)
         self.error_check = kwargs.get("error_check", False)

@@ -5,16 +5,14 @@
 
 # -*- coding: utf-8 -*-
 
-from typing import Dict, List, Optional, Tuple
-
+import os
+import warnings
 
 import numpy as np
 import pyvista as pv
-import os
-
-import warnings
 
 
+########################################################################################
 def get_files(output_dr, prefix):
     all_files = [
         f for f in os.listdir(output_dr) if os.path.isfile(os.path.join(output_dr, f))
@@ -29,6 +27,7 @@ def get_files(output_dr, prefix):
     return [output_dr + "/" + x for x in selected_files_sorted]
 
 
+########################################################################################
 def give_3d(position_stack):
     _, dim = position_stack.shape
     return np.pad(
@@ -39,6 +38,9 @@ def give_3d(position_stack):
     )
 
 
+########################################################################################
+
+
 def npz_to_vtk(
     input_folder,
     output_folder=None,
@@ -46,7 +48,7 @@ def npz_to_vtk(
     verbose=False,
     kind="material_points",
 ):
-    if type(kind) == str:
+    if type(kind) is str:
         kind = [kind]
 
     for k in kind:
@@ -70,12 +72,16 @@ def npz_to_vtk(
             for arr in input_arrays.files:
                 if arr == "grid_mesh":
                     continue
+                arr_ = arr
                 if (remove_word_stack) and ("_stack" in arr):
-                    arr = arr.split("_stack")[0]
-                cloud[arr] = input_arrays[arr]
+                    arr_ = arr.split("_stack")[0]
+                cloud[arr_] = input_arrays[arr]
 
             head, tail = os.path.split(f)
 
             new_tail = ".".join(tail.split(".")[:2]) + ".vtk"
             outfile = os.path.join(output_folder, new_tail)
             cloud.save(outfile)
+
+
+########################################################################################

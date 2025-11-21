@@ -5,12 +5,9 @@
 
 # -*- coding: utf-8 -*-
 
-from typing import Tuple
 
-import equinox as eqx
 import jax
 import jax.numpy as jnp
-
 
 from ..grid.grid import Grid
 

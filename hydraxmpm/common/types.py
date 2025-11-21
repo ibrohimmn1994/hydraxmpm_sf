@@ -5,10 +5,7 @@
 
 # -*- coding: utf-8 -*-
 
-from jaxtyping import Array, Float, Int, UInt, Bool
-
-from typing_extensions import Self, Union
-
+from jaxtyping import Array, Bool, Float, Int, UInt
 
 TypeInt = Int[Array, "..."] | int
 TypeUInt = UInt[Array, "..."]

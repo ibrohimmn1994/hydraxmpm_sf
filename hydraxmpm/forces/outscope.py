@@ -8,9 +8,9 @@
 """Module for the gravity force. Impose gravity on the nodes."""
 
 from typing import Tuple
-import jax
-import chex
+
 import equinox as eqx
+import jax
 import jax.numpy as jnp
 from typing_extensions import Self
 

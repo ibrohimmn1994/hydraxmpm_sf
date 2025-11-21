@@ -11,9 +11,10 @@ from typing import Tuple
 import jax
 import jax.numpy as jnp
 
-from ..common.types import TypeInt, TypeFloat, TypeFloat3, TypeFloatVector
+from ..common.types import TypeFloat, TypeFloat3, TypeFloatVector, TypeInt
 
 
+####################################################################################
 def vmap_cubic_shapefunction(
     intr_dist: TypeFloatVector,
     inv_cell_size: TypeFloat,
@@ -33,6 +34,7 @@ def vmap_cubic_shapefunction(
 
     h = inv_cell_size
 
+    ##############################################################################
     # type 1 nodes - left / right boundary
     def boundary_splines():
         # checked
@@ -63,6 +65,7 @@ def vmap_cubic_shapefunction(
         )
         return basis, dbasis
 
+    ##############################################################################
     # type 2 nodes - left boundary + h
     def boundary_0_p_h():
         # checked
@@ -91,6 +94,7 @@ def vmap_cubic_shapefunction(
         )
         return basis, dbasis
 
+    ##############################################################################
     # type 3 nodes middle
     # checked
     def middle_splines():
@@ -120,6 +124,7 @@ def vmap_cubic_shapefunction(
         )
         return basis, dbasis
 
+    ##############################################################################
     # type 4 nodes - right boundary - h
     def boundary_N_m_h():
         # checked
@@ -148,6 +153,7 @@ def vmap_cubic_shapefunction(
         )
         return basis, dbasis
 
+    ##############################################################################
     # 0th index is middle
     # 1st index is boundary 0 or N
     # 3rd index is left side of closes boundary 0 + h
@@ -192,3 +198,6 @@ def vmap_cubic_shapefunction(
     )
 
     return (shapef, shapef_grad_padded)
+
+
+####################################################################################

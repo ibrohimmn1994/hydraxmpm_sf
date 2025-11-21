@@ -7,23 +7,16 @@
 
 """Module for imposing zero/non-zero boundaries via rigid material_points."""
 
-from functools import partial
-from typing import Optional, Self, Any
+from typing import Any, Optional, Self, Tuple
 
 import equinox as eqx
-import jax
-import jax.numpy as jnp
 
-from ..common.types import (
-    TypeFloat,
-    TypeInt,
-    TypeUIntScalarAStack,
-)
+from ..common.types import TypeFloat, TypeInt
 from ..grid.grid import Grid
 from ..material_points.material_points import MaterialPoints
 from .force import Force
 
-
+#################################################################################
 def create_boundary_slice(axis, side, grid_size, thickness):
     if axis == 0:  # x-axis
         if side == 0:
@@ -34,36 +27,40 @@ def create_boundary_slice(axis, side, grid_size, thickness):
         if side == 0:
             return (slice(None), slice(0, thickness))
         else:
-            return (slice(None), slice(grid_size[1] - thickness - 1, None))
+            return (slice(None), slice(grid_size[1] - thickness, None))
 
 
+#################################################################################
 def stick_all(moment_nt, index):
     """Stick all directions."""
     moment_nt = moment_nt.at[index].set(0.0)
     return moment_nt
 
 
+#################################################################################
 def slip_positive_normal(moment_nt, index):
     """Slip in min direction of inward normal."""
     moment_nt = moment_nt.at[index].min(0.0)
     return moment_nt
 
 
+#################################################################################
 def slip_negative_normal(moment_nt, index):
     """Slip in max direction of outward normal."""
     moment_nt = moment_nt.at[index].max(0.0)
     return moment_nt
 
 
+#################################################################################
 class SlipStickBoundary(Force):
-    thickness: TypeInt = eqx.field(static=True)
+    thickness: TypeInt = eqx.field(init=False, static=True)
 
-    x0: Optional[str] = eqx.field(static=True)
-    x1: Optional[str] = eqx.field(static=True)
-    y0: Optional[str] = eqx.field(static=True)
-    y1: Optional[str] = eqx.field(static=True)
-    z0: Optional[str] = eqx.field(static=True)
-    z1: Optional[str] = eqx.field(static=True)
+    x0: Optional[str] = eqx.field(init=False, static=True)
+    x1: Optional[str] = eqx.field(init=False, static=True)
+    y0: Optional[str] = eqx.field(init=False, static=True)
+    y1: Optional[str] = eqx.field(init=False, static=True)
+    z0: Optional[str] = eqx.field(init=False, static=True)
+    z1: Optional[str] = eqx.field(init=False, static=True)
 
     x0_slice: Optional[Any] = eqx.field(static=True, default=None)
     x1_slice: Optional[Any] = eqx.field(static=True, default=None)
@@ -75,6 +72,7 @@ class SlipStickBoundary(Force):
     # dim: int = eqx.field(static=True)
     # _padding: tuple = eqx.field(init=False, static=True, repr=False)
 
+    ##########################################################################
     def __init__(
         self,
         x0: Optional[str] = None,
@@ -83,9 +81,9 @@ class SlipStickBoundary(Force):
         y1: Optional[str] = None,
         z0: Optional[str] = None,
         z1: Optional[str] = None,
-        thickness: Optional[TypeInt] = 2,
+        thickness: TypeInt = 2,
         **kwargs,
-    ):
+    ) -> None:
         self.thickness = thickness
         self.x0 = x0
         self.x1 = x1
@@ -101,7 +99,8 @@ class SlipStickBoundary(Force):
         self.z0_slice = kwargs.get("z0_slice", None)
         self.z1_slice = kwargs.get("z1_slice", None)
 
-    def init_ids(self: Self, grid: Grid, dim: int, **kwargs):
+    ##########################################################################
+    def init_ids(self: Self, grid: Grid, dim: int, **kwargs) -> Tuple[Self, Grid]:
         assert dim < 3, "SlipStickBoundary only supports 2D grids. (For now)"
         # TODO ADD SLIP STICK FOR 3D
         # TODO modify node type
@@ -131,9 +130,20 @@ class SlipStickBoundary(Force):
             y0_slice=y0_slice,
             y1_slice=y1_slice,
         )
+        # new_self = eqx.tree_at(
+        #     lambda state: (
+        #         state.x0_slice,
+        #         state.x1_slice,
+        #         state.y0_slice,
+        #         state.y1_slice,
+        #     ),
+        #     self,
+        #     (x0_slice, x1_slice, y0_slice, y1_slice),
+        # )
 
         return new_self, grid
 
+    ##########################################################################
     def apply_on_grid(
         self: Self,
         material_points: Optional[MaterialPoints] = None,
@@ -142,13 +152,13 @@ class SlipStickBoundary(Force):
         dt: Optional[TypeFloat] = 0.01,
         dim: TypeInt = 3,
         **kwargs: Any,
-    ):
+    ) -> Tuple[Grid, Self]:
         new_moment_nt_stack = grid.moment_nt_stack.reshape((*grid.grid_size, dim))
 
-        if self.x0 == "stick":
+        if self.x0 == "stick":  # we target both x nad y
             new_moment_nt_stack = stick_all(new_moment_nt_stack, self.x0_slice)
         elif self.x0 == "slip":
-            index = (*self.x0_slice, 0)
+            index = (*self.x0_slice, 0)  # 0 casue we target hte x from the last dim
             new_moment_nt_stack = slip_negative_normal(new_moment_nt_stack, index)  #
 
         if self.x1 == "stick":
@@ -177,3 +187,8 @@ class SlipStickBoundary(Force):
             (new_moment_nt_stack),
         )
         return new_grid, self
+
+    ##########################################################################
+
+
+#################################################################################

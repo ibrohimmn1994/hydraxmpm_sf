@@ -5,10 +5,11 @@
 
 # -*- coding: utf-8 -*-
 
-import copy
+from typing import Literal
 
 import equinox as eqx
 import jax.numpy as jnp
+import numpy as np
 from typing_extensions import Self
 
 from ..common.types import (
@@ -49,10 +50,11 @@ class Grid(eqx.Module):
             avoid numerical instabilities.
     """
 
+    ##################################################################################
     origin: tuple = eqx.field(static=True)
     end: tuple = eqx.field(static=True)
     cell_size: float = eqx.field(static=True)
-    num_cells: int = eqx.field(init=False, static=True, converter=lambda x: int(x))
+    num_nodes: int = eqx.field(init=False, static=True, converter=lambda x: int(x))
     grid_size: tuple = eqx.field(init=False, static=True)
     dim: int = eqx.field(static=True, init=False)
 
@@ -68,51 +70,52 @@ class Grid(eqx.Module):
     _is_padded: bool = eqx.field(static=True)
     _inv_cell_size: float = eqx.field(init=False, static=True)
 
+    ##################################################################################
     def __init__(
         self,
-        origin: TypeFloat3 | tuple,
-        end: TypeFloat3 | tuple,
+        origin: TypeFloat | tuple,
+        end: TypeFloat | tuple,
         cell_size: TypeFloat,
         small_mass_cutoff: TypeFloat = 1e-8,
         **kwargs,
-    ) -> Self:
-        self.origin = jnp.array(origin)
-        self.end = jnp.array(end)
-        self.cell_size = cell_size
-        self.dim = len(origin)
+    ) -> None:
+        origin_ = np.asarray(origin, dtype=float)
+        end_ = np.asarray(end, dtype=float)
+        self.cell_size = float(cell_size)
+        self.dim = len(origin_)
 
         self._inv_cell_size = 1.0 / self.cell_size
 
         # requires jnp.array for calculations
-        self.grid_size = (
-            (jnp.array(self.end) - jnp.array(self.origin)) / self.cell_size + 1
-        ).astype(jnp.uint32)
+        grid_size_ = np.floor(((end_ - origin_) / self.cell_size + 1 + 1e-8)).astype(
+            np.int64
+        )
 
-        self.num_cells = jnp.prod(self.grid_size).astype(jnp.uint32)
+        self.num_nodes = int(np.prod(grid_size_, dtype=np.int64))
 
         # convert to tuple after calculation
-        self.grid_size = tuple(self.grid_size.tolist())
-        self.origin = tuple(self.origin.tolist())
-        self.end = tuple(self.end.tolist())
+        # self.grid_size = tuple(grid_size_.tolist())
+        self.grid_size = tuple(grid_size_.tolist())
+        self.origin = tuple(origin_.tolist())
+        self.end = tuple(end_.tolist())
 
-        self.mass_stack = jnp.zeros(self.num_cells)
-        self.moment_stack = jnp.zeros((self.num_cells, self.dim))
-
-        self.moment_nt_stack = jnp.zeros((self.num_cells, self.dim))
-
+        self.mass_stack = jnp.zeros(self.num_nodes)
+        self.moment_stack = jnp.zeros((self.num_nodes, self.dim))
+        self.moment_nt_stack = jnp.zeros((self.num_nodes, self.dim))
+        # do self.type_stack = jnp.full((selfnum_cells,)),3,dtype=jnp.uint32)
         self.type_stack = (
-            jnp.zeros(self.num_cells, dtype=jnp.uint32).at[0].set(3)
+            jnp.zeros(self.num_nodes, dtype=jnp.uint32).at[0].set(3)
         )  # inside domain
+        self.normal_stack = jnp.zeros((self.num_nodes, self.dim))
 
-        self.normal_stack = jnp.zeros((self.num_cells, self.dim))
-
-        self.small_mass_cutoff = small_mass_cutoff
+        self.small_mass_cutoff = float(small_mass_cutoff)
 
         # flag if the outside domain is padded
         self._is_padded = kwargs.get("_is_padded", False)
 
         # super().__init__(**kwargs)
 
+    ##################################################################################
     def refresh(self: Self) -> Self:
         """Reset background MPM node states."""
 
@@ -130,33 +133,28 @@ class Grid(eqx.Module):
             ),
         )
 
-    def init_padding(self, shapefunction) -> Self:
+    ##################################################################################
+    def init_padding(
+        self, shapefunction: Literal["linear", "quadratic", "cubic"]
+    ) -> Self:
         # pad outside of the domain
         if self._is_padded:
             return self
-        else:
-            if shapefunction == "linear":
-                pad = 1
-            elif shapefunction == "quadratic":
-                pad = 1
-            elif shapefunction == "cubic":
-                pad = 2
-            new_origin = (
-                jnp.array(self.origin) - jnp.ones(self.dim) * self.cell_size * pad
-            )
-            new_end = jnp.array(self.end) + jnp.ones(self.dim) * self.cell_size * pad
+        pad = {"linear": 1, "quadratic": 1, "cubic": 2}[shapefunction]
 
-            # returns a copy of the object with the new domain
-            return copy.copy(
-                Grid(
-                    new_origin,
-                    new_end,
-                    self.cell_size,
-                    self.small_mass_cutoff,
-                    _is_padded=True,
-                )
-            )
+        offset = jnp.full((self.dim,), self.cell_size * pad)
+        new_origin = jnp.array(self.origin) - offset
+        new_end = jnp.array(self.end) + offset
+        # returns a copy of the object with the new domain
+        return type(self)(
+            new_origin,
+            new_end,
+            self.cell_size,
+            self.small_mass_cutoff,
+            _is_padded=True,
+        )
 
+    ##################################################################################
     @property
     def position_mesh(self) -> TypeFloatVectorAStack:
         x = jnp.linspace(self.origin[0], self.end[0], self.grid_size[0])
@@ -170,6 +168,89 @@ class Grid(eqx.Module):
             X, Y = jnp.meshgrid(x, y)
             return jnp.array([X, Y]).T
 
+    ##################################################################################
     @property
     def position_stack(self) -> TypeFloatVectorNStack:
         return self.position_mesh.reshape(-1, self.dim)
+
+    ##################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
